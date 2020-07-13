@@ -22,5 +22,5 @@ splitw -v -p 90 -t 2 -c "pods" '{ cd ~/src/mjbright.k1spy/; echo "./k1s.py pods"
 
 #selectw -t 0 
 selectp -t 3
-splitw -h -p 50 -t 3 -c "all" '{ cd ~/src/mjbright.k1spy/; echo "./k1s.py 1"; bash; }'
+splitw -h -p 50 -t 3 -c "all" '{ cd ~/src/mjbright.k1spy/; echo "./k1s.py -slow"; bash; }'
 

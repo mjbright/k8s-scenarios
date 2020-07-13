@@ -18,9 +18,9 @@ splitw -v -p 95 -t 0 -c "rollout_demo" '{ cd ~/src/mjbright.k1s-scenarios/Rollin
 splitw -v -p 90 -t 1 -c "rollout_demo_curl" '{ cd ~/src/mjbright.k1s-scenarios/RollingUpdateScenario/; bash; }'
 
 #splitw -v -p 90 -t 2 bash -c "echo 'sleeping top3'; sleep 3600"
-splitw -v -p 90 -t 2 -c "pods" '{ cd ~/src/mjbright.k1s/; echo "./k1s '' pods"; bash; }'
+splitw -v -p 90 -t 2 -c "pods" '{ cd ~/src/mjbright.k1s/; echo "./k1s \'\' pods"; bash; }'
 
 #selectw -t 0 
 selectp -t 3
-splitw -h -p 50 -t 3 -c "all" '{ cd ~/src/mjbright.k1s/; echo "./k1s '' 1"; bash; }'
+splitw -h -p 50 -t 3 -c "all" '{ cd ~/src/mjbright.k1s/; echo "./k1s \'\' 1"; bash; }'
 
