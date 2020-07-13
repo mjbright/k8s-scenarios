@@ -1,6 +1,6 @@
 # Example session adapted from: https://stackoverflow.com/questions/5609192/how-to-set-up-tmux-so-that-it-starts-up-with-specified-windows-opened
 # Run as:
-#     tmux new-session "tmux source-file ~/k1s-scenarios/.tmux/k1s.cloud.session"
+#     tmux new-session "tmux source-file ~/src/k1s-scenarios/.tmux/k1s.cloud.session"
 
 #session1
 # Create new Session:
