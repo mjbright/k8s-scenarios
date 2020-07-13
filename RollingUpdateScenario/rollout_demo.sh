@@ -5,6 +5,12 @@ IMAGE_BASE=mjbright/ckad-demo
 DEPLOY=deploy/$NAME
 SVC=svc/$NAME
 
+# NOTE: kubectl create deploy ckad-demo --image mjbright/ckad-demo:1 --dry-run=client -o yaml | kubectl create -f - --record=true
+# Will only record:
+#     REVISION  CHANGE-CAUSE
+#     1         kubectl create --filename=- --record=true
+# in rollout history
+
 press() {
     #BANNER "$*"
     [ $PROMPTS -eq 0 ] && return
