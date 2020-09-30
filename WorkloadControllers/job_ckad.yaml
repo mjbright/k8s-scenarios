@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: ckad-demo-job
+  name: ckad-demo-job
+spec:
+  completions: 7
+  parallelism: 3
+  template:
+    metadata:
+      labels:
+        app: ckad-demo-job
+    spec:
+      restartPolicy: Never
+      containers:
+      - image: mjbright/ckad-demo:alpine1
+        name: ckad-demo-job
+        command: ['/bin/sleep', '7']
