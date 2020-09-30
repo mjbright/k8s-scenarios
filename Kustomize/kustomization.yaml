@@ -1,0 +1,11 @@
+# Generate merged file using command:
+#
+# kubectl kustomize build conf-files > deploy_web.yaml
+#
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deploy_web1.yaml
+- deploy_web2.yaml
+- deploy_web3.yaml

@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web3
+  name: web3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web3
+  template:
+    metadata:
+      labels:
+        app: web3
+    spec:
+      containers:
+      - image: mjbright/ckad-demo:3
+        name: ckad-demo
