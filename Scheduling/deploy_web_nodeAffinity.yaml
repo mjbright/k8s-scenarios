@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web
+  name: web
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      affinity:
+        nodeAffinity: kubernetes.io/os=linux&kubernetes.io/arch=amd64
+      #- node: !node-role.kubernetes.io/master:soft:1
+      containers:
+      - image: mjbright/ckad-demo:1
+        name: ckad-demo
