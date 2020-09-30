@@ -1,0 +1,13 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+   name: pv0003
+   labels:
+      type: local
+spec:
+   capacity:
+      storage: 1Gi
+   accessModes:
+   - ReadWriteOnce
+   hostPath:
+       path: "/tmp/data03"
