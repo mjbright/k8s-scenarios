@@ -11,6 +11,9 @@ SVC=svc/$NAME
 #     1         kubectl create --filename=- --record=true
 # in rollout history
 
+
+## Functions: ---------------------------------------------------------
+
 press() {
     #BANNER "$*"
     [ $PROMPTS -eq 0 ] && return
@@ -42,9 +45,32 @@ CLEANUP() {
    kubectl delete $SVC
 }
 
+## Args: --------------------------------------------------------------
+
+STRATEGY=ROLLING
+
+while [ ! -z "$1" ]; do
+    case $1 in
+        -rol*) STRATEGY=ROLLING;;
+        -rec*) STRATEGY=RECREATE;;
+        *) die "Unknown option '$1'";;
+    esac
+    shift
+done
+
+## Main: --------------------------------------------------------------
+
 CLEANUP 2>/dev/null
 
-PAUSE_RUN kubectl create deploy $NAME --image ${IMAGE_BASE}:1
+if [ "$STRATEGY" = "ROLLING" ]; then
+    PAUSE_RUN kubectl create deploy $NAME --image ${IMAGE_BASE}:1
+else
+    # RECREATE:
+    kubectl create deploy ckad-demo --image mjbright/ckad-demo:1 --dry-run=client -o yaml > deploy_ckad.yaml
+    sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < deploy_ckad.yaml > deploy_ckad_recreate.yaml
+    PAUSE_RUN kubectl create -f deploy_ckad_recreate.yaml
+    #exit 0
+fi
 PAUSE_RUN kubectl expose $DEPLOY  --port 80
 kubectl get all | grep $NAME
 
