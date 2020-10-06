@@ -8,11 +8,13 @@ GET_SVC_IP() {
 
 GET_SVC_IP
 
+CURL_OPTS="--connect-timeout 2 --max-time 4"
+
 while true; do
     if [ -z "$IP" ]; then
         GET_SVC_IP
     else
-        curl ${IP}:80/c;
+        curl $CURL_OPTS ${IP}:80/c;
         [ $? -ne 0 ] && GET_SVC_IP
     fi
     sleep 1;
