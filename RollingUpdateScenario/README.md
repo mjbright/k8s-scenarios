@@ -1,7 +1,9 @@
 
 # Rolling Update Scenario
 
-Building upon the Rolling Update Scenario already present in k1s, this folder contains a couple of scripts to facilitate running a nice Rolling Update demo.
+Building upon the Rolling Update Scenario present in k1s, this folder contains a couple of scripts to facilitate running a nice Rolling Update demo.
+
+Now uses k1s.py.  Checkout k1s.py from https://github.com/mjbright/k1spy
 
 Ideally run the scripts using a tmux multi-pane layout as shown below.
 Alternatively separate windows could be used for each pane.
@@ -44,21 +46,19 @@ See below for thoughts about possible variations.
 |                                                                                |
 |                                                                                |
 +--------------------------+--------------------------+--------------------------+
-| $ ./k1s "" deploy        | $ ./k1s "" rs            | $ ./k1s "" pod           |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-|                          |                          |                          |
-+--------------------------+--------------------------+--------------------------+
+| $ ./k1s.py /k1s.py po,dep,rs,svc
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
+|                                                                                |
++--------------------------------------------------------------------------------+
 ```
 
 ## Possible Variations:
