@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ckad-demo-sset
+  name: ckad-demo-sset-headless
+  namespace: default
+spec:
+  type: ClusterIP
+  clusterIP: None # ClusterIP
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: ckad-demo-sset
