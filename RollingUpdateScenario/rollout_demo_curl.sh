@@ -1,9 +1,10 @@
 #!/bin/sh
 
 NAME=ckad-demo
+[ ! -z "$1" ] && NAME=$1
 
 GET_SVC_IP() {
-    IP=$(kubectl get svc ckad-demo --no-headers | awk '{ print $3; }')
+    IP=$(kubectl get svc $NAME --no-headers | awk '{ print $3; }')
 }
 
 GET_SVC_IP
