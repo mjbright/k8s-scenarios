@@ -107,7 +107,12 @@ case $STRATEGY in
         #exit 0
 	;;
     BLUEGREEN)
-       	BLUE_GREEN; exit $?;;
+       	BLUE_GREEN;
+	press "Cleanup"
+	kubectl delete svc ckad-demo
+	kubectl delete deploy ckad-demo-blue
+	kubectl delete deploy ckad-demo-green
+	exit $?;;
 esac
 
 PAUSE_RUN kubectl expose $DEPLOY  --port 80
