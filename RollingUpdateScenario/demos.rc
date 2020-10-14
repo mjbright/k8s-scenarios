@@ -1,0 +1,79 @@
+#!/bin/bash
+
+## - Functions: -------------------------------------------------------
+
+die() { echo -e "$0: die - $*" >&2; exit 1; }
+
+PROMPT=${PROMPT:=1}
+
+READ_OPTIONS() {
+    [ $PROMPT -eq 0 ] && return 0
+
+    while true; do
+        echo -n "Press <return> "
+        read DUMMY
+
+        [ "${DUMMY#!!}" != "${DUMMY}" ] && {
+            echo "-- $LASTCMD"
+            $LASTCMD
+            continue
+        }
+
+        if [ "${DUMMY#!}" != "${DUMMY}" ];then
+            if [ "${DUMMY#!*}" != "${DUMMY#!}" ];then
+                local CMD=${DUMMY#!}
+                bash -x $CMD
+            else
+                PS1='debug \u@\h \w> ' bash
+            fi
+            continue
+        fi 
+
+        [ "${DUMMY}" = "q" ] && exit 0
+        [ "${DUMMY}" = "Q" ] && exit 0
+
+        [ "${DUMMY}" = "s" ] && return 1
+        [ "${DUMMY}" = "S" ] && return 1
+
+        [ "${DUMMY#vf*}" != "${DUMMY}" ] && vi $CURRENT_FILE
+
+        [ "${DUMMY#vp*}" != "${DUMMY}" ] && RUN kubectl get $CURRENT_POD
+        [ "${DUMMY#dp*}" != "${DUMMY}" ] && RUN kubectl describe $CURRENT_POD
+
+        [ "${DUMMY#vd*}" != "${DUMMY}" ] && RUN kubectl get $CURRENT_DEPLOY
+        [ "${DUMMY#dd*}" != "${DUMMY}" ] && RUN kubectl describe $CURRENT_DEPLOY
+
+        [ -z "${DUMMY}" ] && return 0
+    done
+
+    # # HELP:
+    # # [ "${DUMMY#h*}" != "${DUMMY}" ] && Show opts, re-read DUMMY
+    # return 0
+}
+
+SECTION1() {
+    PROMPT=1
+    [ "$1" = "-np" ] && { shift; PROMPT=0; }
+    echo; echo "======== $*"
+    READ_OPTIONS
+}
+
+SECTION2() {
+    PROMPT=1
+    [ "$1" = "-np" ] && { shift; PROMPT=0; }
+    echo; echo "---- $*"
+    READ_OPTIONS
+}
+
+RUN() {
+    PROMPT=1
+    [ "$1" = "-np" ] && { shift; PROMPT=0; }
+
+    echo; echo "---- $*"
+    READ_OPTIONS
+    [ $? -eq 0 ] && $*
+    local RET=$?
+    LASTCMD=$*
+    return $RET
+}
+
