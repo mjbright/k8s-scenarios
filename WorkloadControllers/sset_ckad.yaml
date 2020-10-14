@@ -6,7 +6,7 @@ metadata:
   name: ckad-demo-sset
 spec:
   serviceName: ckad-demo-sset
-  replicas: 10
+  replicas: 5
   selector:
     matchLabels:
       app: ckad-demo-sset

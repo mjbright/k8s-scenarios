@@ -37,7 +37,9 @@ SHOW_TYPE "Deployment" deploy_ckad.yaml
 
 SHOW_TYPE "DaemonSet" dset_ckad.yaml
 
-SHOW_TYPE "StatefulSet (show scale down/delete)" sset_ckad.yaml
+echo; echo "-- StatedulSet"
+#SHOW_TYPE "StatefulSet (show scale down/delete)" sset_ckad.yaml
+RUN kubectl apply -f sset_ckad.yaml
 RUN kubectl apply -f svc_sset_ckad.yaml
 RUN kubectl apply -f sset_ckad_v2.yaml
 RUN kubectl scale sts ckad-demo-sset --replicas=0
