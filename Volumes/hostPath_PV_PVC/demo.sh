@@ -26,8 +26,12 @@ for FILE in $FILES; do
     RUN kubectl create -f $FILE
 done
 
-read -p "Enter node name [worker2]: " NODE
+echo; kubectl get pods -o custom-columns=NODE:.spec.nodeName
+NODE=$( kubectl get pods -o custom-columns=NODE:.spec.nodeName --no-headers )
+
 [ -z "$NODE" ] && NODE="worker2"
+read -p "Enter node name [$NODE]: " NODE_CHOICE
+[ ! -z "$NODE_CHOICE" ] && NODE="$NODE_CHOICE"
 
 RUN ssh $NODE ls -al /tmp/data01/
 RUN ssh $NODE tail -100f /tmp/data01/date.log
