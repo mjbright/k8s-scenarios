@@ -1,0 +1,14 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+   name: pv0004
+   labels:
+      type: local
+spec:
+   storageClassName: large-slow
+   capacity:
+      storage: 100Gi
+   accessModes:
+   - ReadWriteOnce
+   hostPath:
+       path: "/tmp/data04"

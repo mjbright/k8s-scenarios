@@ -1,0 +1,14 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+   name: pv0005
+   labels:
+      type: local
+spec:
+   storageClassName: small-fast
+   capacity:
+      storage: 10Gi
+   accessModes:
+   - ReadWriteOnce
+   hostPath:
+       path: "/tmp/data05"
