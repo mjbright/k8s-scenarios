@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web-na
+  name: web-node-aff
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: web-na
+  template:
+    metadata:
+      labels:
+        app: web-na
+    spec:
+      containers:
+      - image: mjbright/ckad-demo:alpine1
+        name: ckad-demo
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: team
+                operator: In
+                values:
+                - staging
+                - dev
+              #- key: kubernetes.io/os=linux&kubernetes.io/arch=amd64
+              #- key: kubernetes.io/os
+              #  operator: In
+              #  values:
+              #  - linux
+              #- key: kubernetes.io/arch
+              #  operator: In
+              #  values:
+              #  - amd64
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: team
+                operator: In
+                values:
+                - staging
