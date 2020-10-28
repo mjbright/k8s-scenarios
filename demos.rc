@@ -71,7 +71,7 @@ RUN() {
     [ "$1" = "-np" ] && { shift; PROMPTS=0; }
 
     echo;
-    YELLOW "-- $*";
+    YELLOW "-- $*"; echo
     READ_OPTIONS
     #eval "$*";
     #[ $? -eq 0 ] && $*
@@ -198,7 +198,7 @@ CPRESS() {
         BLUE)    shift; BLUE "$*";    echo;;
         MAGENTA) shift; MAGENTA "$*"; echo;;
 	CYAN)    shift; CYAN "$*";    echo;;
-	*)       shift; echo "$*";;
+	*)       shift; echo "$*"; echo;;
     esac
     READ_OPTIONS
 }
