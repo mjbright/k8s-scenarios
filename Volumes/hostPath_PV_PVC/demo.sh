@@ -33,8 +33,10 @@ NODE=$( kubectl get pods -o custom-columns=NODE:.spec.nodeName --no-headers )
 read -p "Enter node name [$NODE]: " NODE_CHOICE
 [ ! -z "$NODE_CHOICE" ] && NODE="$NODE_CHOICE"
 
-RUN ssh $NODE ls -al /tmp/data01/
-RUN ssh $NODE tail -100f /tmp/data01/date.log
+#VOL=/tmp/data01
+VOL=/tmp/data03
+RUN ssh $NODE ls -al ${VOL}/
+RUN ssh $NODE tail -100f ${VOL}/date.log
 
 FILES="./pv4_sc_hostpath.yaml ./pv5_sc_hostpath.yaml ./pvc2_sc.yaml ./pod2_hostpath_pvc2.yaml"
 for FILE in $FILES; do
