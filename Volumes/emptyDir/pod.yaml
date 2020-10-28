@@ -4,9 +4,12 @@ metadata:
   labels:
     run: pv-demo
   name: pv-demo
+
 spec:
   containers:
+
   - image: mjbright/ckad-demo:alpine1
     name: pv-demo
+
   dnsPolicy: ClusterFirst
   restartPolicy: Always

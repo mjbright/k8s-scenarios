@@ -4,6 +4,7 @@ metadata:
    name: pv0003
    labels:
       type: local
+
 spec:
    capacity:
       storage: 4Gi

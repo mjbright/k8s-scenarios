@@ -3,16 +3,20 @@ kind: Pod
 metadata:
   name: mypv-test
   namespace: default
+
 spec:
   restartPolicy: Never
+
   volumes:
   - name: vol
     persistentVolumeClaim:
       claimName: myclaim-1
+
   containers:
   - name: pv-test
     image: mjbright/ckad-demo:alpine1
     command: ["/bin/sh", "-c", "while true; do echo $(hostname): $(date) >> /cmount/date.log; sleep 1; done"]
+
     volumeMounts:
     - name: vol
       mountPath: /cmount

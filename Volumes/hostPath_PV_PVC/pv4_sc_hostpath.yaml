@@ -4,8 +4,10 @@ metadata:
    name: pv0004
    labels:
       type: local
+
 spec:
    storageClassName: large-slow
+
    capacity:
       storage: 100Gi
    accessModes:

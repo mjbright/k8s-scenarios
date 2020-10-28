@@ -2,8 +2,10 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
    name: myclaim-2-large-slow
+
 spec:
    storageClassName: large-slow
+
    accessModes:
       - ReadWriteOnce
    resources:

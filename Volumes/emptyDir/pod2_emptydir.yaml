@@ -5,6 +5,10 @@ metadata:
     run: pv-demo-2-ed
   name: pv-demo-2-ed
 spec:
+  volumes:
+  - name: ed
+    emptyDir: {}
+
   containers:
 
   - image: mjbright/ckad-demo:alpine1
@@ -22,8 +26,4 @@ spec:
 
   dnsPolicy: ClusterFirst
   restartPolicy: Always
-  volumes:
-  - name: ed
-    emptyDir: {}
-
 

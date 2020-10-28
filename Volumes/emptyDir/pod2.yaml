@@ -4,14 +4,18 @@ metadata:
   labels:
     run: pv-demo-2
   name: pv-demo-2
+
 spec:
   containers:
+
   - image: mjbright/ckad-demo:alpine1
     name: pv-demo
+
   - image: mjbright/ckad-demo:alpine1
     name: pv-demo2
     # Sleep 1hr:
     # We need some non-default command else will fail to listen on port 80
     command: ['/bin/sleep', '3600']
+
   dnsPolicy: ClusterFirst
   restartPolicy: Always

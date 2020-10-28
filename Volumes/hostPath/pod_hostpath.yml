@@ -3,16 +3,20 @@ kind: Pod
 metadata:
   name: pv-hostpath
   namespace: default
+
 spec:
   restartPolicy: Never
+
   volumes:
   - name: vol
     hostPath:
       path: /tmp/hostpath
+
   containers:
   - name: pv-hostpath
     image: mjbright/ckad-demo:alpine1
     command: ["/bin/sh", "-c", "while true; do echo $(hostname): $(date) >> /cmount/date.log; sleep 1; done"]
+
     volumeMounts:
     - name: vol
       mountPath: /cmount
