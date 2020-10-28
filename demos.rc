@@ -6,6 +6,11 @@ die() { echo -e "$0: die - $*" >&2; exit 1; }
 
 PROMPT=${PROMPT:=1}
 
+PRESS() {
+    echo; echo $*
+    READ_OPTIONS
+}
+
 READ_OPTIONS() {
     [ $PROMPT -eq 0 ] && return 0
 
