@@ -1,6 +1,7 @@
 #!/bin/sh
 
-NAME=ckad-demo
+#NAME=ckad-demo
+NAME=web
 [ ! -z "$1" ] && NAME=$1
 
 GET_SVC_IP() {
