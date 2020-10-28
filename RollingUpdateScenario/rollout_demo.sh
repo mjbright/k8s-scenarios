@@ -1,11 +1,16 @@
 #!/bin/sh
 
-NAME=ckad-demo
+#APP_NAME=ckad-demo
+APP_NAME=web
+APP_CONTAINER=ckad-demo
 IMAGE_BASE=mjbright/ckad-demo
-DEPLOY=deploy/$NAME
-SVC=svc/$NAME
+DEPLOY=deploy/$APP_NAME
+SVC=svc/$APP_NAME
 
-# NOTE: kubectl create deploy ckad-demo --image mjbright/ckad-demo:1 --dry-run=client -o yaml | kubectl create -f - --record=true
+TMP=~/tmp/demos
+mkdir -p $TMP
+
+# NOTE: kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:1 --dry-run=client -o yaml | kubectl create -f - --record=true
 # Will only record:
 #     REVISION  CHANGE-CAUSE
 #     1         kubectl create --filename=- --record=true
@@ -47,35 +52,35 @@ CLEANUP() {
 
 BLUE_GREEN() {
    # CLEANUP:
-   kubectl get svc ckad-demo 2>/dev/null | grep -q ckad-demo &&
-       RUN kubectl delete svc ckad-demo
-   kubectl get deploy ckad-demo-blue 2>/dev/null | grep -q ckad-demo-blue &&
-       RUN kubectl delete deploy ckad-demo-blue
-   kubectl get deploy ckad-demo-green 2>/dev/null | grep -q ckad-demo-green &&
-       RUN kubectl delete deploy ckad-demo-green
+   kubectl get svc $APP_NAME 2>/dev/null | grep -q $APP_NAME &&
+       RUN kubectl delete svc $APP_NAME
+   kubectl get deploy ${APP_NAME}-blue 2>/dev/null | grep -q ${APP_NAME}-blue &&
+       RUN kubectl delete deploy ${APP_NAME}-blue
+   kubectl get deploy ${APP_NAME}-green 2>/dev/null | grep -q ${APP_NAME}-green &&
+       RUN kubectl delete deploy ${APP_NAME}-green
 
-   PAUSE_RUN kubectl create deploy ckad-demo-blue --image mjbright/ckad-demo:1
-   PAUSE_RUN kubectl create deploy ckad-demo-green --image mjbright/ckad-demo:3
+   PAUSE_RUN kubectl create deploy ${APP_NAME}-blue --image ${IMAGE_BASE}:1
+   PAUSE_RUN kubectl create deploy ${APP_NAME}-green --image ${IMAGE_BASE}:3
 
    # Replace 1st ocurrence of -blue (part of Service label, not the selector):
-   kubectl expose deploy ckad-demo-blue --port 80 --type ClusterIP --name ckad-demo --dry-run=client -o yaml |
-       sed '1,/-blue/s/-blue//' > service-ckad-demo.yaml
+   kubectl expose deploy ${APP_NAME}-blue --port 80 --type ClusterIP --name ${APP_NAME} --dry-run=client -o yaml |
+       sed '1,/-blue/s/-blue//' > $TMP/service-${APP_NAME}.yaml
 
-   PAUSE_RUN cat service-ckad-demo.yaml
+   PAUSE_RUN cat $TMP/service-${APP_NAME}.yaml
 
-   PAUSE_RUN kubectl create -f service-ckad-demo.yaml 
-   SVC_IP=$(kubectl get svc ckad-demo -o custom-columns=CIP:.spec.clusterIP --no-headers)
-   PAUSE_RUN kubectl describe svc ckad-demo
+   PAUSE_RUN kubectl create -f $TMP/service-${APP_NAME}.yaml 
+   SVC_IP=$(kubectl get svc ${APP_NAME} -o custom-columns=CIP:.spec.clusterIP --no-headers)
+   PAUSE_RUN kubectl describe svc ${APP_NAME}
    PAUSE_RUN curl -sL $SVC_IP
 
    # Replace selector:
-   sed 's/-blue/-green/' < service-ckad-demo.yaml > service-green.yaml 
+   sed 's/-blue/-green/' < $TMP/service-${APP_NAME}.yaml > $TMP/service-green.yaml 
    #cp -a service-blue.yaml service-green.yaml 
 
-   PAUSE_RUN cat service-green.yaml 
-   PAUSE_RUN kubectl apply -f service-green.yaml 
+   PAUSE_RUN cat $TMP/service-green.yaml 
+   PAUSE_RUN kubectl apply -f $TMP/service-green.yaml 
 
-   PAUSE_RUN kubectl describe svc ckad-demo
+   PAUSE_RUN kubectl describe svc ${APP_NAME}
    PAUSE_RUN curl -sL $SVC_IP
 }
 
@@ -98,32 +103,34 @@ done
 CLEANUP 2>/dev/null
 
 case $STRATEGY in
-    ROLLING) PAUSE_RUN kubectl create deploy $NAME --image ${IMAGE_BASE}:1;;
+    ROLLING) PAUSE_RUN kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:1;;
     RECREATE)
         # RECREATE:
-        kubectl create deploy ckad-demo --image mjbright/ckad-demo:1 --dry-run=client -o yaml > deploy_ckad.yaml
-        sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < deploy_ckad.yaml > deploy_ckad_recreate.yaml
-        PAUSE_RUN kubectl create -f deploy_ckad_recreate.yaml
+        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $TMP/deploy_${APP_NAME}.yaml
+        sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < deploy_${APP_NAME}.yaml > $TMP/deploy_${APP_NAME}_recreate.yaml
+        PAUSE_RUN kubectl create -f $TMP/deploy_${APP_NAME}_recreate.yaml
         #exit 0
 	;;
     BLUEGREEN)
        	BLUE_GREEN;
 	press "Cleanup"
-	kubectl delete svc ckad-demo
-	kubectl delete deploy ckad-demo-blue
-	kubectl delete deploy ckad-demo-green
+	kubectl delete svc ${APP_NAME}
+	kubectl delete deploy ${APP_NAME}-blue
+	kubectl delete deploy ${APP_NAME}-green
 	exit $?;;
 esac
 
 PAUSE_RUN kubectl expose $DEPLOY  --port 80
-kubectl get all | grep $NAME
+kubectl get all | grep $APP_NAME
 
 PAUSE_RUN kubectl scale $DEPLOY --replicas=10
-PAUSE_RUN kubectl set image $DEPLOY ${NAME}=${IMAGE_BASE}:2 --record
+PAUSE_RUN kubectl set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:2 --record
+PAUSE_RUN kubectl rollout pause  $DEPLOY
+PAUSE_RUN kubectl rollout resume $DEPLOY
 RUN kubectl rollout status ${DEPLOY}
 PAUSE_RUN kubectl rollout history ${DEPLOY}
 
-PAUSE_RUN kubectl set image ${DEPLOY} ${NAME}=${IMAGE_BASE}:3 --record
+PAUSE_RUN kubectl set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE_BASE}:3 --record
 RUN kubectl rollout status ${DEPLOY}
 PAUSE_RUN kubectl rollout history ${DEPLOY}
 PAUSE_RUN kubectl rollout undo ${DEPLOY}
