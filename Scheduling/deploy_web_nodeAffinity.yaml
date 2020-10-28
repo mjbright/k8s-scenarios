@@ -2,20 +2,20 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: web
-  name: web
+    app: web-na
+  name: web-nodeAff
 spec:
   replicas: 5
   selector:
     matchLabels:
-      app: web
+      app: web-na
   template:
     metadata:
       labels:
-        app: web
+        app: web-na
     spec:
       containers:
-      - image: mjbright/ckad-demo:1
+      - image: mjbright/ckad-demo:alpine1
         name: ckad-demo
       affinity:
         nodeAffinity:
