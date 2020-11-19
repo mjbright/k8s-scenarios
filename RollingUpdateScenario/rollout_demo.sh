@@ -110,7 +110,7 @@ case $STRATEGY in
         # RECREATE:
         YAML1=$TMP/deploy_${APP_NAME}.yaml
         YAML2=$TMP/deploy_${APP_NAME}_recreate.yaml
-        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $YAML1
+        RUN_PRESS kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $YAML1
         ls -al $YAML1
         sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < $YAML1 > $YAML2
         ls -al $YAML2
@@ -131,6 +131,9 @@ RUN_PRESS kubectl expose $DEPLOY  --port 80
 kubectl get all | grep $APP_NAME
 
 RUN_PRESS kubectl scale $DEPLOY --replicas=10
+
+echo
+echo "NOTE: remember pause/resume during rollout"
 RUN_PRESS kubectl set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:2 --record
 RUN_PRESS kubectl rollout pause  $DEPLOY
 RUN_PRESS kubectl rollout resume $DEPLOY
