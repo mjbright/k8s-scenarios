@@ -37,7 +37,7 @@ The date.log file remains after the Pod is destroyed
 
 To run the hostPath_PV_PVC demo
 - cd hostPath_PV_PVC
-- Run the ../demo/.sh script
+- Run the ../demo.sh script
 
 ### Demo1:
 
