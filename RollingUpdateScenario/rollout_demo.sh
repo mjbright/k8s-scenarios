@@ -108,10 +108,15 @@ case $STRATEGY in
     ROLLING) RUN_PRESS kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:1;;
     RECREATE)
         # RECREATE:
-        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $TMP/deploy_${APP_NAME}.yaml
-        sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < deploy_${APP_NAME}.yaml > $TMP/deploy_${APP_NAME}_recreate.yaml
-        RUN_PRESS kubectl create -f $TMP/deploy_${APP_NAME}_recreate.yaml
-        #exit 0
+        YAML1=$TMP/deploy_${APP_NAME}.yaml
+        YAML2=$TMP/deploy_${APP_NAME}_recreate.yaml
+        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $YAML1
+        ls -al $YAML1
+        sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < $YAML1 > $YAML2
+        ls -al $YAML2
+        diff $YAML1 $YAML2
+    	RUN_PRESS kubectl create -f $YAML2
+        # exit $?
 	;;
     BLUEGREEN)
        	BLUE_GREEN;
