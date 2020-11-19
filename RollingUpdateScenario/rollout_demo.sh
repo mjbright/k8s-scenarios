@@ -116,7 +116,8 @@ case $STRATEGY in
         ls -al $YAML1
         sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < $YAML1 > $YAML2
         ls -al $YAML2
-        echo "---- diff $YAML1 $YAML2"
+        echo
+	echo "---- diff $YAML1 $YAML2"
         diff $YAML1 $YAML2
     	RUN_PRESS kubectl create -f $YAML2
         # exit $?
