@@ -40,9 +40,18 @@ SHOW_TYPE "DaemonSet" dset_ckad.yaml
 echo; echo "-- StatedulSet"
 #SHOW_TYPE "StatefulSet (show scale down/delete)" sset_ckad.yaml
 RUN kubectl apply -f sset_ckad.yaml
+
+RUN cat svc_sset_ckad.yaml
 RUN kubectl apply -f svc_sset_ckad.yaml
+
+RUN cat hdless_svc_sset_ckad.yaml
+RUN diff hdless_svc_sset_ckad.yaml svc_sset_ckad.yaml
+
+RUN kubectl apply -f hdless_svc_sset_ckad.yaml
+
 RUN kubectl apply -f sset_ckad_v2.yaml
 RUN kubectl scale sts ckad-demo-sset --replicas=0
+RUN kubectl delete sts ckad-demo-sset
 
 # TODO: Use of successJobHistory / failedJobHistory / what about maximum time?
 # TODO: Show Completed state
