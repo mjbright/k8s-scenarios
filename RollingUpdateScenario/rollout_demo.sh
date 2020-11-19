@@ -110,7 +110,9 @@ case $STRATEGY in
         # RECREATE:
         YAML1=$TMP/deploy_${APP_NAME}.yaml
         YAML2=$TMP/deploy_${APP_NAME}_recreate.yaml
-        RUN_PRESS kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $YAML1
+	echo
+	echo "Creating yaml file for blue and green deployments:"
+        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $YAML1
         ls -al $YAML1
         sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < $YAML1 > $YAML2
         ls -al $YAML2
