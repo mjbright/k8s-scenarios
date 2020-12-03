@@ -1,0 +1,5 @@
+
+. ~/.bashrc
+
+export PS1='>>>> '
+
