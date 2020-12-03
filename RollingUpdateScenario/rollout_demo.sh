@@ -63,6 +63,8 @@ BLUE_GREEN() {
 
    RUN_PRESS kubectl create deploy ${APP_NAME}-blue --image ${IMAGE_BASE}:1
    RUN_PRESS kubectl create deploy ${APP_NAME}-green --image ${IMAGE_BASE}:3
+   RUN kubectl scale deploy ${APP_NAME}-blue --replicas 3
+   RUN kubectl scale deploy ${APP_NAME}-green --replicas 3
 
    # Replace 1st ocurrence of -blue (part of Service label, not the selector):
    kubectl expose deploy ${APP_NAME}-blue --port 80 --type ClusterIP --name ${APP_NAME} --dry-run=client -o yaml |
