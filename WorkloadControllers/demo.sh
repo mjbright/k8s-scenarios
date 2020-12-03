@@ -61,7 +61,7 @@ function yesno
 }
 
 RUN() {
-    echo; press "-- $*" || $*
+    echo; press "-- $*" && $*
 }
 
 DIFF_YAML() {
