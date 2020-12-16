@@ -7,34 +7,59 @@ RC=../demos.rc
 [ ! -f $RC ] && die "Missing rc file '$RC'"
 . $RC
 
+MASTER_LABEL_KEY="node-role.kubernetes.io/master"
+
+GET_NODES() {
+    MASTERS=$(kubectl get nodes -l $MASTER_LABEL_KEY -o custom-columns=NAME:.metadata.name --no-headers)
+    NUM_MASTERS=$(echo "$MASTERS" | wc -l)
+    WORKERS=$(kubectl get nodes -l "!$MASTER_LABEL_KEY" -o custom-columns=NAME:.metadata.name --no-headers)
+    NUM_WORKERS=$(echo "$WORKERS" | wc -l)
+
+    echo "Cluster has $NUM_MASTERS controllers <"$MASTERS">"
+    echo "Cluster has $NUM_WORKERS workers     <"$WORKERS">"
+
+    #MASTER1="${MASTERS%% *}"
+    #WORKER1="${WORKERS%% *}"
+    MASTER1=$(echo "$MASTERS" | head -1)
+    WORKER1=$(echo "$WORKERS" | head -1)
+}
+
 CLEANUP() {
-    RUN kubectl label node master team-
-    RUN kubectl label node worker1 team-
+    RUN kubectl label node --all team-
     kubectl get deploy | grep web-node-aff && RUN kubectl delete deploy web-node-aff
+    kubectl get deploy | grep web          && RUN kubectl delete deploy web         
 }
 
 NODENAME_EXAMPLE() {
     SECTION1 "nodeName example"
     PRESS "About to create Pod using nodeName"
-    RUN cat deploy_web_nodeName.yaml
-    RUN kubectl create -f deploy_web_nodeName.yaml
+
+    sed -e "s/nodeName: master/nodeName: $MASTER1/" deploy_web_nodeName.yaml > /tmp/deploy_web_nodeName.yaml 
+    #RUN grep -C 100 nodeName: /tmp/deploy_web_nodeName.yaml
+    HL "-- cat /tmp/deploy_web_nodeName.yaml"; echo; PRESS
+    grep --color=always -C 100 nodeName: /tmp/deploy_web_nodeName.yaml
+
+    RUN kubectl create -f /tmp/deploy_web_nodeName.yaml
     RUN kubectl get pods -o wide
+
     PRESS "About to delete Pod"
-    RUN kubectl delete -f deploy_web_nodeName.yaml
+    RUN kubectl delete -f /tmp/deploy_web_nodeName.yaml
 }
 
 NODESELECTOR_EXAMPLE() {
     SECTION1 "nodeSelector example"
-
     PRESS "About to create Pod using nodeSelector"
 
-    RUN cat deploy_web_nodeSelector.yaml
-    RUN kubectl create -f deploy_web_nodeSelector.yaml
+    set -x
+    sed -e "s?/hostname: worker1?/hostname: $WORKER1?" deploy_web_nodeSelector.yaml > /tmp/deploy_web_nodeSelector.yaml 
+    set +x
+    HL "-- cat /tmp/deploy_web_nodeSelector.yaml"; echo; PRESS
+    grep --color=always -C 100 hostname: /tmp/deploy_web_nodeSelector.yaml
 
+    RUN kubectl create -f /tmp/deploy_web_nodeSelector.yaml
     RUN kubectl get pods -o wide
 
     PRESS "About to delete Pod"
-
     RUN kubectl delete -f deploy_web_nodeSelector.yaml
 }
 
@@ -68,6 +93,7 @@ NODEAFFINITY_EXAMPLE() {
     RUN kubectl get pods -o wide
 }
 
+GET_NODES
 CLEANUP
 
 NODENAME_EXAMPLE
