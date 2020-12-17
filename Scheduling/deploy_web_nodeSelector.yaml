@@ -15,7 +15,7 @@ spec:
         app: web
     spec:
       nodeSelector:
-        kubernetes.io/hostname: worker1
+        zone: workergroup1
       containers:
       - image: mjbright/ckad-demo:1
         name: ckad-demo

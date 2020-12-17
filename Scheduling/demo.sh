@@ -22,6 +22,8 @@ GET_NODES() {
     #WORKER1="${WORKERS%% *}"
     MASTER1=$(echo "$MASTERS" | head -1)
     WORKER1=$(echo "$WORKERS" | head -1)
+    WORKER2=$(echo "$WORKERS" | head -2 | tail -1)
+    WORKER3=$(echo "$WORKERS" | head -3 | tail -1)
 }
 
 CLEANUP() {
@@ -42,7 +44,7 @@ NODENAME_EXAMPLE() {
     RUN kubectl create -f /tmp/deploy_web_nodeName.yaml
     RUN kubectl get pods -o wide
 
-    PRESS "About to delete Pod"
+    PRESS "About to delete Pods"
     RUN kubectl delete -f /tmp/deploy_web_nodeName.yaml
 }
 
@@ -50,13 +52,20 @@ NODESELECTOR_EXAMPLE() {
     SECTION1 "nodeSelector example"
     PRESS "About to create Pod using nodeSelector"
 
-    set -x
-    sed -e "s?/hostname: worker1?/hostname: $WORKER1?" deploy_web_nodeSelector.yaml > /tmp/deploy_web_nodeSelector.yaml 
-    set +x
-    HL "-- cat /tmp/deploy_web_nodeSelector.yaml"; echo; PRESS
-    grep --color=always -C 100 hostname: /tmp/deploy_web_nodeSelector.yaml
+    RUN kubectl label node $WORKER1 zone=workergroup1 --overwrite
+    [ ! -z "$WORKER2" ] && RUN kubectl label node $WORKER2 zone=workergroup1 --overwrite
 
-    RUN kubectl create -f /tmp/deploy_web_nodeSelector.yaml
+    #set -x
+    #sed -e "s?/hostname: worker1?/hostname: $WORKER1?" deploy_web_nodeSelector.yaml > /tmp/deploy_web_nodeSelector.yaml 
+    #set +x
+    #HL "-- cat /tmp/deploy_web_nodeSelector.yaml"; echo; PRESS
+    #grep --color=always -C 100 hostname: /tmp/deploy_web_nodeSelector.yaml
+
+    #RUN kubectl create -f /tmp/deploy_web_nodeSelector.yaml
+
+    HL "-- cat deploy_web_nodeSelector.yaml"; echo; PRESS
+    grep --color=always -C 100 zone: deploy_web_nodeSelector.yaml
+    RUN kubectl create -f deploy_web_nodeSelector.yaml
     RUN kubectl get pods -o wide
 
     PRESS "About to delete Pod"
@@ -66,19 +75,26 @@ NODESELECTOR_EXAMPLE() {
 NODEAFFINITY_EXAMPLE() {
     SECTION1 "nodeAffinity example"
 
-    PRESS "Initial example, no labels on nodes: can't schedule Pods"
+    PRESS "Initial example, no 'team' labels on nodes: can't schedule Pods"
     RUN kubectl create -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml
     RUN kubectl get pods -o wide
 
-    PRESS "Now add team=dev label on master node and see Pods get scheduled"
-    RUN kubectl label node master team=dev
+    DEV_NODE=$MASTER1
+    [ ! -z "$WORKER2" ] &&
+    PRESS "Now add team=dev label on $DEV_NODE node and see Pods get scheduled (ONLY after re-creation)"
+    RUN kubectl label node $DEV_NODE team=dev --overwrite
     RUN kubectl delete -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml 
     RUN kubectl get pods -o wide
     RUN kubectl create -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml
     RUN kubectl get pods -o wide
 
-    PRESS "Now add team=staging label on worker1 node, delete and recreate deployment, and see Pods get scheduled differently"
-    RUN kubectl label node worker1 team=staging
+    APPLY=$WORKER1
+    [ ! -z "$WORKER3" ] && APPLY+=" $WORKER3"
+    PRESS "Now add team=staging label on '$APPLY' node(s), delete and recreate deployment, and see Pods get scheduled differently"
+    for NODE in $APPLY; do
+        RUN kubectl label node $NODE team=staging --overwrite
+    done
+
     RUN kubectl delete -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml 
     RUN kubectl get pods -o wide
     PRESS ""
@@ -96,8 +112,8 @@ NODEAFFINITY_EXAMPLE() {
 GET_NODES
 CLEANUP
 
-NODENAME_EXAMPLE
-NODESELECTOR_EXAMPLE
+#NODENAME_EXAMPLE
+#NODESELECTOR_EXAMPLE
 NODEAFFINITY_EXAMPLE
 exit 0
 
