@@ -27,9 +27,19 @@ GET_NODES() {
 }
 
 CLEANUP() {
-    RUN kubectl label node --all team-
+    SECTION1 "Cleaning up ..."
+    echo "- Removing 'zone' & 'team' labels if present ..."
+    echo "- Removing 'web' & 'web-node-aff' deployments if present ..."
+    #RUN kubectl label node --all team-
+    #RUN kubectl label node --all zone-
+    {
+    #set -x
+    kubectl label node --all team-
+    kubectl label node --all zone-
     kubectl get deploy | grep web-node-aff && RUN kubectl delete deploy web-node-aff
     kubectl get deploy | grep web          && RUN kubectl delete deploy web         
+    #set +x
+    } >/dev/null 2>&1
 }
 
 NODENAME_EXAMPLE() {
@@ -80,12 +90,13 @@ NODEAFFINITY_EXAMPLE() {
     RUN kubectl get pods -o wide
 
     DEV_NODE=$MASTER1
-    [ ! -z "$WORKER2" ] &&
-    PRESS "Now add team=dev label on $DEV_NODE node and see Pods get scheduled (ONLY after re-creation)"
+    [ ! -z "$WORKER2" ] && DEV_NODE=$WORKER2
+    #PRESS "Now add team=dev label on $DEV_NODE node and see Pods get scheduled (ONLY after re-creation)"
+    PRESS "Now add team=dev label on $DEV_NODE node and see Pods get scheduled"
     RUN kubectl label node $DEV_NODE team=dev --overwrite
-    RUN kubectl delete -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml 
-    RUN kubectl get pods -o wide
-    RUN kubectl create -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml
+    #RUN kubectl delete -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml 
+    #RUN kubectl get pods -o wide
+    #RUN kubectl create -f 1.nodeAffinity.team/deploy_web_nodeAffinity.yaml
     RUN kubectl get pods -o wide
 
     APPLY=$WORKER1
@@ -112,8 +123,8 @@ NODEAFFINITY_EXAMPLE() {
 GET_NODES
 CLEANUP
 
-#NODENAME_EXAMPLE
-#NODESELECTOR_EXAMPLE
+NODENAME_EXAMPLE
+NODESELECTOR_EXAMPLE
 NODEAFFINITY_EXAMPLE
 exit 0
 
