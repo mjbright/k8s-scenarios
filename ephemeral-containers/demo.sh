@@ -311,17 +311,17 @@ STEP3_EPHEMERAL_CONTAINER() {
     RUN kubectl describe pod $CURRENT_POD
 
     #RUN kubectl alpha debug -it $CURRENT_POD --image=busybox --target=$TARGET_CONTAINER_NAME
-    RUN kubectl debug -it $CURRENT_POD --image=alpine:latest --target=$TARGET_CONTAINER_NAME -c debugger
-
-    RUN kubectl describe pod $CURRENT_POD
-
     echo
     echo "Inside the ephemeral container we can access process, network & filesystem namespaces"
     echo "- ps"
     echo "- nslookup ectest"
     echo "- ls   /proc/1/root"
     echo "- find /proc/1/root/app"
-    RUN kubectl exec -it $CURRENT_POD -- /bin/sh
+    RUN kubectl debug -it $CURRENT_POD --image=alpine:latest --target=$TARGET_CONTAINER_NAME -c debugger
+
+    RUN kubectl describe pod $CURRENT_POD
+
+    #RUN kubectl exec -it $CURRENT_POD -- /bin/sh
 }
 
 ## - Args: ------------------------------------------------------------
