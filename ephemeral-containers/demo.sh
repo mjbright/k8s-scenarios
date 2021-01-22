@@ -225,9 +225,9 @@ spec:
         name: $TARGET_CONTAINER_NAME
 EOF
 
-    kubectl get deploy $DEPLOY --no-headers | grep -q "^$DEPLOY " &&
+    kubectl get deploy $DEPLOY --no-headers 2>/dev/null | grep -q "^$DEPLOY " &&
         RUN kubectl delete -f $CURRENT_FILE
-    while kubectl get deploy $DEPLOY --no-headers | grep -q "^$DEPLOY "; do
+    while kubectl get deploy $DEPLOY --no-headers 2>/dev/null | grep -q "^$DEPLOY "; do
 	echo "Waiting for deploy/$DEPLOY to terminate"
 	sleep 2
     done
@@ -253,6 +253,7 @@ STEP2_EXTRACT_A_POD() {
         RUN curl $POD_IP
         RUN kubectl label pod $CURRENT_POD app=debug-${DEPLOY} --overwrite
 
+    sleep 2
     echo; echo "Single Pod has been isolated by changing it's label:"
     kubectl get pods -o wide --show-labels -l "app!=$APP_NAME"
     RUN kubectl get pods --show-labels
