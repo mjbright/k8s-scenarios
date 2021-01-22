@@ -303,10 +303,10 @@ STEP3_EPHEMERAL_CONTAINER() {
     # https://www.europeclouds.com/blog/debugging-with-ephemeral-containers-in-k8s
     #    kubectl alpha debug -it example --image=busybox --target=example # <- target=container name within Pod
 
-    echo "Note: current containers ..."
-    echo "==> try busybox"
-    echo "==> try image stuffed with tools : contrast container size"
-    echo "==> try image stuffed with kubectl + krew plugins : contrast container size"
+    echo; echo "Note: current containers in the Pod ..."
+    #echo "==> try busybox"
+    #echo "==> try image stuffed with tools : contrast container size"
+    #echo "==> try image stuffed with kubectl + krew plugins : contrast container size"
     RUN kubectl describe pod $CURRENT_POD
 
     #RUN kubectl alpha debug -it $CURRENT_POD --image=busybox --target=$TARGET_CONTAINER_NAME
@@ -314,6 +314,12 @@ STEP3_EPHEMERAL_CONTAINER() {
 
     RUN kubectl describe pod $CURRENT_POD
 
+    echo
+    echo "Inside the ephemeral container we can access process, network & filesystem namespaces"
+    echo "- ps"
+    echo "- nslookup ectest"
+    echo "- ls   /proc/1/root"
+    echo "- find /proc/1/root/app"
     RUN kubectl exec -it $CURRENT_POD -- /bin/sh
 }
 
