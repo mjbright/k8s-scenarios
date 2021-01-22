@@ -310,7 +310,7 @@ STEP3_EPHEMERAL_CONTAINER() {
     RUN kubectl describe pod $CURRENT_POD
 
     #RUN kubectl alpha debug -it $CURRENT_POD --image=busybox --target=$TARGET_CONTAINER_NAME
-    RUN kubectl debug -it $CURRENT_POD --image=alpine:latest --target=$TARGET_CONTAINER_NAME
+    RUN kubectl debug -it $CURRENT_POD --image=alpine:latest --target=$TARGET_CONTAINER_NAME -c debugger
 
     RUN kubectl describe pod $CURRENT_POD
 
