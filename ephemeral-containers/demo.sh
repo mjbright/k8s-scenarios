@@ -205,7 +205,7 @@ metadata:
     app: $APP_NAME
   name: $APP_NAME
 spec:
-  replicas: 10
+  replicas: 3
   selector:
     matchLabels:
       app: $APP_NAME
