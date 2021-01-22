@@ -225,6 +225,7 @@ spec:
         name: $TARGET_CONTAINER_NAME
 EOF
 
+    RUN kubectl delete pods -l app=debug-ectest
     kubectl get deploy $DEPLOY --no-headers 2>/dev/null | grep -q "^$DEPLOY " &&
         RUN kubectl delete -f $CURRENT_FILE
     while kubectl get deploy $DEPLOY --no-headers 2>/dev/null | grep -q "^$DEPLOY "; do
@@ -233,7 +234,7 @@ EOF
     done
     RUN kubectl create -f $CURRENT_FILE
 
-    echo "TODO: create problem with deployment"
+    ## echo "TODO: create problem with deployment"
 }
 
 STEP2_EXTRACT_A_POD() {
