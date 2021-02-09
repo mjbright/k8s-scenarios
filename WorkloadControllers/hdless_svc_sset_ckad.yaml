@@ -4,7 +4,6 @@ metadata:
   labels:
     app: sset
   name: sset-headless-cip
-  namespace: default
 spec:
   type: ClusterIP
   clusterIP: None # ClusterIP
