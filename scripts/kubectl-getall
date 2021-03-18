@@ -1,0 +1,37 @@
+#!/bin/bash
+
+RES=$( kubectl api-resources --no-headers | awk '{ print $1; }' )
+NS="default"
+
+TMPDIR=~/tmp
+mkdir -p $TMPDIR
+
+SHOW_RESOURCES() {
+    for KIND in $RES; do
+        TMP=$( mktemp $TMPDIR/res${KIND}XXXX )
+
+        #kubectl -n $NS get --no-headers $KIND > $TMP 2>&1
+        kubectl -n $NS get --no-headers $KIND > $TMP 2>/dev/null
+        grep -vq "No resources" $TMP
+        if [ $? -eq 0 ]; then
+            #echo FOUND $KIND
+	    echo "-- $KIND"; cat $TMP
+        #else
+            #echo NO $KIND
+        fi
+    done
+}
+
+[ ! -z "$1" ] && NS="$1"
+
+[ "$NS" = "all" ] && NS="-A"
+
+if [ "$NS" = "-A" ]; then
+    ALL_NS=$(kubectl get ns --no-headers -o custom-columns=NAME:.metadata.name)
+    for NS in $ALL_NS; do
+        SHOW_RESOURCES
+    done
+else
+    SHOW_RESOURCES
+fi
+
