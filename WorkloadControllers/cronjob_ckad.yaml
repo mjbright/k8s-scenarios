@@ -8,6 +8,8 @@ spec:
   schedule: "* * * * *" # Every minute !!
   jobTemplate:
     spec:
+      parallelism: 2
+      completions: 3
       template:
         metadata:
           labels:
