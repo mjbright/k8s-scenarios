@@ -4,7 +4,6 @@ metadata:
   labels:
     app: web1
   name: web1
-  namespace: default
 spec:
   ports:
   - port: 80
