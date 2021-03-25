@@ -16,7 +16,7 @@ while true; do
     if [ -z "$IP" ]; then
         GET_SVC_IP
     else
-        curl $CURL_OPTS ${IP}:80/c;
+        curl $CURL_OPTS ${IP}:80/1;
         [ $? -ne 0 ] && GET_SVC_IP
     fi
     sleep 1;
