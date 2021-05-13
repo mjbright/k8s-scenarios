@@ -788,7 +788,9 @@ INSTALL_PKGS_INIT() {
     INSTALL_PKGS
 
     KUBEADM_INIT
-    echo "Happy sailing ..."
+
+    echo
+    STEP_HEADER "All done on the control node:"  "Happy sailing ..."
 }
 
 KUBEADM_INIT() {
