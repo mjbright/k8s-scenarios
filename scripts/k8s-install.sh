@@ -588,6 +588,15 @@ INSTALL_PKGS() {
     #RUN sudo sed -i '/ swap / s/^\\(.*\\)$/#\\1/g' /etc/fstab
     sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
     RUN sudo swapoff -a
+
+    STEP_HEADER "INSTALL_PKGS:"  "Package installation & configuration complete"
+    [ "$NODE" = "control"  ] && return
+
+    echo "Now manually join this node to the cluster"
+    echo "The command to use on this node was previously saved in"
+    echo "    ~/tmp/run_on_worker_to_join.txt"
+    echo "on the control node"
+    echo
 }
 
 CONFIGURE_SYSCTL() {
@@ -767,6 +776,7 @@ INSTALL_PKGS_INIT() {
     INSTALL_PKGS
 
     KUBEADM_INIT
+    echo "Happy sailing ..."
 }
 
 KUBEADM_INIT() {
@@ -813,21 +823,24 @@ KUBEADM_INIT() {
     #kubectl cluster-info dump
 }
 
+QUICK_RESET_UNINSTALL_REINSTALL() {
+    #YESNO "Are you really sure you want to completely reset your cluster\n${RED}Warning:${NORMAL} You won't be asked again ..." || exit 0
+    YESNO "Are you really sure you want to completely reset your cluster
+    Warning: You won't be asked again ..." || exit 0
+    ALL_PROMPTS=0
+    PV_RATE=100
+    HARD_RESET_NODE
+
+    [ "$NODE" = "worker"  ] && INSTALL_PKGS
+    [ "$NODE" = "control" ] && INSTALL_PKGS_INIT
+}
+
 ## Main: ------------------------------------------------------
 
 
 case $ACTION in
     HARD_RESET_NODE) HARD_RESET_NODE; exit $?;;
     SOFT_RESET_NODE) SOFT_RESET_NODE; exit $?;;
-    QUICK_RESET_UNINSTALL_REINSTALL)
-        #YESNO "Are you really sure you want to completely reset your cluster\n${RED}Warning:${NORMAL} You won't be asked again ..." || exit 0
-        YESNO "Are you really sure you want to completely reset your cluster
-Warning: You won't be asked again ..." || exit 0
-        ALL_PROMPTS=0
-        PV_RATE=100
-        HARD_RESET_NODE
-        INSTALL_PKGS_INIT
-        exit $?;;
 esac
 
 [ "$NODE" = "worker"  ] && [ -z "$ACTION" ] && ACTION="INSTALL_PKGS"
@@ -836,11 +849,15 @@ esac
 [ -z "$NODE" ]   && die "Unset node type '\$NODE' - use -c or -w options"
 [ -z "$ACTION" ] && die "Unset action '\$ACTION'"
 
+[ "$NODE" = "worker"  ] && [ "$ACTION" = "INSTALL_PKGS_INIT" ] &&
+    die "Invalid action '$ACTION' for a worker node"
 #die "OK"
 
 case $ACTION in
     HARD_RESET_NODE) HARD_RESET_NODE; exit $?;;
     SOFT_RESET_NODE) SOFT_RESET_NODE; exit $?;;
+
+    QUICK_RESET_UNINSTALL_REINSTALL) QUICK_RESET_UNINSTALL_REINSTALL; exit $?;;
 
     INSTALL_PKGS)      INSTALL_PKGS;      exit $?;;
     INSTALL_PKGS_INIT) INSTALL_PKGS_INIT; exit $?;;
