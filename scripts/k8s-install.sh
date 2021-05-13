@@ -824,8 +824,11 @@ KUBEADM_INIT() {
     # From: https://stackoverflow.com/questions/53198576/ansible-playbook-wait-until-all-pods-running
     
     ## Need to know Pod names but we don't know for calico-node-xxx ...
-    ## STEP_HEADER "INSTALL_INIT:"  "Waiting for all Pods to be 'Created'"
+    STEP_HEADER "INSTALL_INIT:"  "Waiting for Calico Pods to be 'Created'"
     ## QRUN "kubectl get pods --namespace=kube-system --selector tier=control-plane --output=jsonpath='{.items[*].metadata.name}'"
+    while ! kubectl get pods -n kube-system -o name | grep pod/calico-node ; do echo -n .; sleep 1; done
+    while ! kubectl get pods -n kube-system -o name | grep pod/calico-kube ; do echo -n .; sleep 1; done
+    echo
 
     STEP_HEADER "INSTALL_INIT:"  "Waiting for all Pods to be 'Running' - may take 1-2 mins"
     # QRUN kubectl wait --namespace=kube-system --for=condition=Ready pods --selector tier=control-plane --timeout=600s
