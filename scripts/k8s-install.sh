@@ -528,6 +528,9 @@ while [ ! -z "$1" ]; do
         -i)   ACTION="INSTALL_PKGS";;
         -I)   ACTION="INSTALL_PKGS_INIT";;
         -ki)  ACTION="KUBEADM_INIT";;
+
+	# go faster stripes:
+        -q)   PV_RATE=100;;
         -Q)   ACTION="QUICK_RESET_UNINSTALL_REINSTALL";;
 
         -kr) shift; K8S_REL="$1"; K8S_REL="${K8S_REL%-00}-00";;
