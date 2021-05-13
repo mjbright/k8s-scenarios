@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This script downloadable from:
+#     https://github.com/mjbright/k8s-scenarios/blob/master/scripts/k8s-install.sh
+# using:
+#     wget https://raw.githubusercontent.com/mjbright/k8s-scenarios/master/scripts/k8s-install.sh
+
 mkdir -p ~/tmp
 
 # Installation loosely based on:
