@@ -554,6 +554,8 @@ while [ ! -z "$1" ]; do
     shift
 done
 
+INSTALL_TOOLS
+
 INSTALL_PKGS() {
     GET_NODE_INFO
     #echo "Installing Kubernetes release $K8S_REL"
