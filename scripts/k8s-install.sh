@@ -642,6 +642,7 @@ INSTALL_DOCKER() {
 
     STEP_HEADER "INSTALL_DOCKER:"  "Install the packages containerd.io (container engine), docker-ce* (docker client and daemon)"
     RUN sudo apt install -y containerd.io docker-ce docker-ce-cli
+    echo "Ignore possible Docker failures at this stage"
     CHECK_DOCKER_STARTED
 
     STEP_HEADER "INSTALL_DOCKER:"  "Configure Docker for Kubernetes"
@@ -676,8 +677,17 @@ EOF
     RUN sudo docker --version
 
     STEP_HEADER "INSTALL_DOCKER:"  "Verify Docker interaction"
+    #RUN sudo docker ps |
+    LOOP=0
+    while ! sudo docker ps 2>/dev/null; do
+        let LOOP=LOOP+1
+        echo "Loop$LOOP: Docker not started: sleeping then restarting ..."
+        sleep 10
+        RUN sudo systemctl restart docker
+    done
+
     RUN sudo docker ps
-    [ $? -ne 0 ] && ALWAYS_WARN_PROMPT "Docker seems not to be started"
+    [ $? -ne 0 ] && ALWAYS_WARN_PROMPT "Docker doesn't seem to be started"
 }
 
 CHECK_DOCKER_STARTED() {
@@ -690,6 +700,8 @@ CHECK_DOCKER_STARTED() {
     sudo systemctl status docker | grep failed && {
         die "Docker install failed - try restarting using 'sudo systemctl start docker'"
     }
+
+    echo "Docker is running OK"
 }
 
 INSTALL_CRIO() {
