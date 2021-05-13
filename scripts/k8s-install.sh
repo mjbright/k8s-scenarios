@@ -404,8 +404,8 @@ KUBEADM_RESET() {
 
 KUBE_REMOVE_DIRS() {
     REMOVE_DIRS=0
-    [ -f /etc/kubernetes/ ] && REMOVE_DIRS=1
-    [ -f /var/lib/etcd/ ]   && REMOVE_DIRS=1
+    [ -d /etc/kubernetes/ ] && REMOVE_DIRS=1
+    [ -d /var/lib/etcd/ ]   && REMOVE_DIRS=1
     [ $REMOVE_DIRS -ne 0 ] && {
         STEP_HEADER "rm -rf /etc/kubernetes/ /var/lib/etcd/" " - remove config directories"
         RUN sudo rm -rf /etc/kubernetes/ /var/lib/etcd/
