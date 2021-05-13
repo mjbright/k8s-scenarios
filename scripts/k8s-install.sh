@@ -803,7 +803,7 @@ KUBEADM_INIT() {
     RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
 
     # Extract join command:
-    grep -A 1 "kubeadm join" ~/tmp/control.out | tail -2 > ~/tmp/run_on_worker_to_join.sh
+    grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
     STEP_HEADER "INSTALL_INIT:"  "Showing installed node"
     RUN sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get nodes
