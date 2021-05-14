@@ -153,7 +153,10 @@ SECTION2() {
 }
 
 PV() {
-    [ $USE_PV -eq 0 ] && return
+    [ $USE_PV -eq 0 ] && {
+        cat
+        return
+    }
     pv -qL $PV_RATE
     [ $PV_PROMPT -eq 0 ] && return
     read _DUMMY
