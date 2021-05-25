@@ -508,57 +508,6 @@ USAGE() {
     echo 
 }
 
-## Args: ------------------------------------------------------
-
-ACTION=""
-NODE=""
-
-# echo -e "${GREEN}Hello world${NORMAL}" | PV
-# exit
-
-[ -z "$1" ] && { USAGE; die "Missing options"; }
-
-while [ ! -z "$1" ]; do
-    case $1 in
-        -x)   set -x;;
-        +x)   set +x;;
-       -np) PROMPTS=0;;
-        -p) PROMPTS=1;;
-
-        -R)   ACTION="HARD_RESET_NODE";;
-        -r)   ACTION="SOFT_RESET_NODE";;
-
-        -i)   ACTION="INSTALL_PKGS";;
-        -I)   ACTION="INSTALL_PKGS_INIT";;
-        -ki)  ACTION="KUBEADM_INIT";;
-
-	# go faster stripes:
-        -q)   PV_RATE=100;;
-        -Q)   ACTION="QUICK_RESET_UNINSTALL_REINSTALL";;
-
-        -kr) shift; K8S_REL="$1"; K8S_REL="${K8S_REL%-00}-00";;
-        -kl) K8S_REL=$( curl -L -s https://dl.k8s.io/release/stable.txt )
-             K8S_REL=${K8S_REL#v}
-             K8S_REL=${K8S_REL#V}
-             K8S_REL="${K8S_REL%-00}-00"
-             ;;
-
-        control|-control|-c) NODE="control";;
-        worker|-worker|-w)   NODE="worker";;
-
-        -h|-?)   USAGE; exit 0;;
-
-        -info)   GET_NODE_INFO; exit;;
-
-        *) echo "${RED}Unknown option${NORMAL} '$1'"
-           USAGE; exit 1;
-        ;;
-    esac
-    shift
-done
-
-INSTALL_TOOLS
-
 INSTALL_PKGS() {
     GET_NODE_INFO
     #echo "Installing Kubernetes release $K8S_REL"
@@ -855,7 +804,58 @@ QUICK_RESET_UNINSTALL_REINSTALL() {
     [ "$NODE" = "control" ] && INSTALL_PKGS_INIT
 }
 
+## Args: ------------------------------------------------------
+
+ACTION=""
+NODE=""
+
+# echo -e "${GREEN}Hello world${NORMAL}" | PV
+# exit
+
+[ -z "$1" ] && { USAGE; die "Missing options"; }
+
+while [ ! -z "$1" ]; do
+    case $1 in
+        -x)   set -x;;
+        +x)   set +x;;
+       -np) PROMPTS=0;;
+        -p) PROMPTS=1;;
+
+        -R)   ACTION="HARD_RESET_NODE";;
+        -r)   ACTION="SOFT_RESET_NODE";;
+
+        -i)   ACTION="INSTALL_PKGS";;
+        -I)   ACTION="INSTALL_PKGS_INIT";;
+        -ki)  ACTION="KUBEADM_INIT";;
+
+	# go faster stripes:
+        -q)   PV_RATE=100;;
+        -Q)   ACTION="QUICK_RESET_UNINSTALL_REINSTALL";;
+
+        -kr) shift; K8S_REL="$1"; K8S_REL="${K8S_REL%-00}-00";;
+        -kl) K8S_REL=$( curl -L -s https://dl.k8s.io/release/stable.txt )
+             K8S_REL=${K8S_REL#v}
+             K8S_REL=${K8S_REL#V}
+             K8S_REL="${K8S_REL%-00}-00"
+             ;;
+
+        control|-control|-c) NODE="control";;
+        worker|-worker|-w)   NODE="worker";;
+
+        -h|-?)   USAGE; exit 0;;
+
+        -info)   GET_NODE_INFO; exit;;
+
+        *) echo "${RED}Unknown option${NORMAL} '$1'"
+           USAGE; exit 1;
+        ;;
+    esac
+    shift
+done
+
 ## Main: ------------------------------------------------------
+
+INSTALL_TOOLS
 
 
 case $ACTION in
