@@ -768,7 +768,8 @@ KUBEADM_INIT() {
     [ -f $HOME/.kube/config ] && cp -a $HOME/.kube/config $HOME/.kube/config.bak
     #RUN sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
     RUN sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
-    RUN sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    #RUN sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    RUN sudo chown -R $(id -u):$(id -g) $HOME/.kube/
 
     STEP_HEADER "INSTALL_INIT:"  "Showing installed node - as user $USER"
     RUN kubectl get nodes
