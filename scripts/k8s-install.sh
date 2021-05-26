@@ -742,6 +742,8 @@ INSTALL_PKGS_INIT() {
 
     KUBEADM_INIT
 
+    UNTAINT_CONTROL_NODE
+
     echo
     STEP_HEADER "All done on the control node:"  "Happy sailing ..."
 }
@@ -804,6 +806,26 @@ QUICK_RESET_UNINSTALL_REINSTALL() {
 
     [ "$NODE" = "worker"  ] && INSTALL_PKGS
     [ "$NODE" = "control" ] && INSTALL_PKGS_INIT
+}
+
+UNTAINT_CONTROL_NODE() {
+    TAINT="node-role.kubernetes.io/master:NoSchedule"
+    SELECTOR="-l node-role.kubernetes.io/control-plane"
+    TAINT_KEY=${TAINT%:*}
+
+    # Add taint for testing:
+    # kubectl taint node node-role.kubernetes.io/master:NoSchedule -l node-role.kubernetes.io/control-plane
+    # kubectl taint node $TAINT $SELECTOR
+
+    STEP_HEADER "Checking for taint on control-plane nodes" " - remove taint if present"
+    kubectl get nodes $SELECTOR -o custom-columns=NAME:metadata.name,TAINTS:spec.taints |
+	    grep NoSchedule | grep ${TAINT_KEY} && {
+        echo "Removing '$TAINT' taint from control-plane nodes:"
+        CMD="kubectl taint node $SELECTOR ${TAINT_KEY}-"
+	echo "-- $CMD"
+	$CMD
+        kubectl get nodes $SELECTOR -o custom-columns=NAME:metadata.name,TAINTS:spec.taints
+    }
 }
 
 ## Args: ------------------------------------------------------
