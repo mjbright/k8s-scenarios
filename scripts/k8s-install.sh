@@ -857,8 +857,27 @@ done
 
 ## Main: ------------------------------------------------------
 
-INSTALL_TOOLS
+YESNO "About to install Kubernetes $K8S_REL on this $NODE node - OK" || exit 1
 
+HOSTNAME=$(hostname)
+
+case $NODE in
+    control)
+        #[ $HOSTNAME != "control" ] &&
+        hostname | grep -iq control ||
+            YESNO "Do you want to change hostname to be 'control' before installing (recommended)" &&
+                sudo hostnamectl set-hostname control
+	;;
+    worker)
+        #[ $HOSTNAME != "worker" ] &&
+        hostname | grep -iq worker ||
+            YESNO "Do you want to change hostname to be 'worker' before installing (recommended)" &&
+                sudo hostnamectl set-hostname worker
+	;;
+    *) die "Unknown node type '$NODE'";;
+esac
+
+INSTALL_TOOLS
 
 case $ACTION in
     HARD_RESET_NODE) HARD_RESET_NODE; exit $?;;
