@@ -15,8 +15,12 @@ mkdir -p ~/tmp
 CONTAINER_ENGINE="DOCKER"
 INSTALL_CE=INSTALL_${CONTAINER_ENGINE}
 
+HOSTNAME=$(hostname)
+
 PROMPTS=${PROMPTS:=1}
 ALL_PROMPTS=${ALL_PROMPTS:=1}
+ABS_NO_PROMPTS=0
+FORCE_NODENAME=""
 
 USECOLOR=${USECOLOR:=1}
 VERBOSE_PROMPT=0
@@ -279,8 +283,8 @@ HL1() {
 #HL1 "A TEST \$USECOLOR=$USECOLOR"
 
 # DEMO_HEADER: Show section (first arg in green), then prompt for input
-DEMO_HEADER() { echo;echo; GREEN  "$1 "; shift; echo "$*";  QPRESS ""; }
-STEP_HEADER() { echo;      GREEN  "$1 "; shift; echo "$*";  }
+DEMO_HEADER() { echo;echo; GREEN  "$HOSTNAME: $1 "; shift; echo "$*";  QPRESS ""; }
+STEP_HEADER() { echo;      GREEN  "$HOSTNAME: $1 "; shift; echo "$*";  }
 
 #
 # Function: PRESS <prompt>
@@ -334,6 +338,8 @@ YESNO() {
     PROMPT="$1"
     [ ! -z "$2" ] && default="$2"
 
+    #echo "ALL_PROMPTS='$ALL_PROMPTS'"
+    #echo "default='$default'"
     [ $ALL_PROMPTS -eq 0 ] && [ ! -z "$default" ] && {
         resp=$default
         [ \( "$resp" = "y" \) -o \( "$resp" = "Y" \) ] && return 0
@@ -798,8 +804,10 @@ KUBEADM_INIT() {
 
 QUICK_RESET_UNINSTALL_REINSTALL() {
     #YESNO "Are you really sure you want to completely reset your cluster\n${RED}Warning:${NORMAL} You won't be asked again ..." || exit 0
+    DEFAULT="n"
+    [ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
     YESNO "Are you really sure you want to completely reset your cluster
-    Warning: You won't be asked again ..." || exit 0
+        Warning: You won't be asked again ..." "$DEFAULT" || exit 0
     ALL_PROMPTS=0
     PV_RATE=100
     HARD_RESET_NODE
@@ -842,6 +850,12 @@ while [ ! -z "$1" ]; do
     case $1 in
         -x)   set -x;;
         +x)   set +x;;
+
+       -set-nodename) shift; FORCE_NODENAME=$1;;
+
+       -ANP) ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
+
+       -anp|-NP) ALL_PROMPTS=0;;
        -np) PROMPTS=0;;
         -p) PROMPTS=1;;
 
@@ -879,25 +893,31 @@ done
 
 ## Main: ------------------------------------------------------
 
-YESNO "About to install Kubernetes $K8S_REL on this $NODE node - OK" || exit 1
-
-HOSTNAME=$(hostname)
+DEFAULT="n"
+[ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
+YESNO "About to install Kubernetes $K8S_REL on this $NODE node - OK" "$DEFAULT" || exit 1
 
 case $NODE in
     control)
         #[ $HOSTNAME != "control" ] &&
-        hostname | grep -iq control ||
-            YESNO "Do you want to change hostname to be 'control' before installing (recommended)" &&
-                sudo hostnamectl set-hostname control
+        SET_NODENAME=control
+        [ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
+        hostname | grep -iq $SET_NODENAME ||
+            YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
+                sudo hostnamectl set-hostname $SET_NODENAME
 	;;
     worker)
         #[ $HOSTNAME != "worker" ] &&
-        hostname | grep -iq worker ||
-            YESNO "Do you want to change hostname to be 'worker' before installing (recommended)" &&
-                sudo hostnamectl set-hostname worker
+        SET_NODENAME=worker
+        [ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
+        hostname | grep -iq $SET_NODENAME ||
+            YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
+                sudo hostnamectl set-hostname $SET_NODENAME
 	;;
     *) die "Unknown node type '$NODE'";;
 esac
+
+HOSTNAME=$(hostname)
 
 INSTALL_TOOLS
 
