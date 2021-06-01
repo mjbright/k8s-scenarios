@@ -409,7 +409,11 @@ KUBEADM_RESET() {
     DO_RESET=0
     [ -f /etc/kubernetes/ ]                && DO_RESET=1
     ps -fade | grep -v grep | grep -q kube && DO_RESET=1
-    [ $DO_RESET -ne 0 ] && RUN sudo kubeadm reset
+
+    KUBEADM_RESET_FORCE=""
+    [ $ALL_PROMPTS -eq 0 ] && KUBEADM_RESET_FORCE="--force"
+
+    [ $DO_RESET -ne 0 ] && RUN sudo kubeadm reset $KUBEADM_RESET_FORCE
 }
 
 KUBE_REMOVE_DIRS() {
