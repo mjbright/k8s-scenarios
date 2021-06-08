@@ -7,6 +7,9 @@
 
 mkdir -p ~/tmp
 
+
+POD_CIDR="192.168.0.0/16"
+
 # Installation loosely based on:
 # - https://computingforgeeks.com/deploy-kubernetes-cluster-on-ubuntu-with-kubeadm
 
@@ -767,7 +770,8 @@ KUBEADM_INIT() {
     STEP_HEADER "INSTALL_INIT:"  "Initialize the cluster"
     echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
     echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-    RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
+    #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
+    RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
 
     # Extract join command:
     grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
@@ -840,6 +844,17 @@ UNTAINT_CONTROL_NODE() {
     }
 }
 
+CHOOSE_CIDR() {
+
+    IP1=$( ip a|grep -A 4 ^2: | grep " inet " | sed -e 's/.* inet //' -e 's?/.*??' )
+    IP_PART=${IP1%.*}
+    [ "$IP_PART" = "192.168.0" ] && { POD_CIDR="192.168.128.0/18"; return; }
+
+    IP2=$( hostname -i )
+    IP_PART=${IP2%.*}
+    [ "$IP_PART" = "192.168.0" ] && { POD_CIDR="192.168.128.0/18"; return; }
+}
+
 ## Args: ------------------------------------------------------
 
 ACTION=""
@@ -900,6 +915,8 @@ done
 DEFAULT="n"
 [ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
 YESNO "About to install Kubernetes $K8S_REL on this $NODE node - OK" "$DEFAULT" || exit 1
+
+CHOOSE_CIDR
 
 case $NODE in
     control)
