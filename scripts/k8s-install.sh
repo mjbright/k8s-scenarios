@@ -492,7 +492,7 @@ USAGE() {
     echo
     echo "Specify node type:"
     echo "    -c: control node (master)"
-    echo "    -w: control node (master)"
+    echo "    -w: worker node"
     echo
     echo "Reset actions:"
     echo "    -r: soft reset (undo kubeadm actions)"
