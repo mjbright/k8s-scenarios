@@ -33,6 +33,7 @@ VERBOSE_PROMPT=1
 
 #K8S_REL="1.20.1-00"
 K8S_REL="1.21.1-00"
+[ -f /tmp/k8s-release ] && K8S_REL=$(cat /tmp/k8s-release)
 
 USE_PV=1
 PV_PROMPT=0
