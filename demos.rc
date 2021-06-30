@@ -81,6 +81,11 @@ RUN() {
     return $RET
 }
 
+NORUN_PRESS() {
+    CPRESS "YELLOW" "-- $*";
+    #eval "$*";
+}
+
 RUN_PRESS() {
     CPRESS "YELLOW" "-- $*";
     eval "$*";
