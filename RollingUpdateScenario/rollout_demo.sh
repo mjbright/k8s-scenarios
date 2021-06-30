@@ -167,6 +167,7 @@ RUN kubectl rollout status ${DEPLOY}
 RUN_PRESS kubectl rollout history ${DEPLOY}
 #RUN_PRESS kubectl rollout undo ${DEPLOY}
 RUN_PRESS kubectl rollout undo ${DEPLOY} --to-revision 1
+RUN_PRESS kubectl rollout history ${DEPLOY}
 
 exit 0
 
