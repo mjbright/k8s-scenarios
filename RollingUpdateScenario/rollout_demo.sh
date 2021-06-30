@@ -21,6 +21,9 @@ mkdir -p $TMP
 #     REVISION  CHANGE-CAUSE
 #     1         kubectl create --filename=- --record=true
 # in rollout history
+#
+# SOLUTION: manually inset the change-cause annotation:
+#    kubectl create deploy $APP_NAME --image mjbright/k8s-demo:2 --dry-run=client -o yaml | sed 's/^  labels:/\ \ annotations:\n\ \ \ \ kubernetes.io\/change-cause: WHY-NOT\n\ \ labels:/' > t.yaml
 
 
 ## Functions: ---------------------------------------------------------
@@ -111,7 +114,16 @@ done
 CLEANUP 2>/dev/null
 
 case $STRATEGY in
-    ROLLING) RUN_PRESS kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:1;;
+    ROLLING)
+        #RUN_PRESS kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1 --record
+        CMD="kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1"
+        NORUN_PRESS "---- $CMD"
+        $CMD --dry-run=client -o yaml |
+            sed 's/^  labels:/\ \ annotations:\n\ \ \ \ kubernetes.io\/change-cause: CHANGE_CAUSE\n\ \ labels:/' |
+            sed "s?CHANGE_CAUSE?$CMD?" |
+	    tee $TMP/ROLLING_deploy_${APP_NAME}.yaml |
+            kubectl create -f -
+        ;;
     RECREATE)
         # RECREATE:
         YAML1=$TMP/deploy_${APP_NAME}.yaml
