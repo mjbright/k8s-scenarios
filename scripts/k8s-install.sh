@@ -898,7 +898,7 @@ while [ ! -z "$1" ]; do
              ;;
 
 	# LFS458: uses k8scp as control node name:
-        lfs|-lfs|-k8scp)     NODE="k8scp";;
+        lfs|-lfs|k8scp|-k8scp)     NODE="k8scp";;
         control|-control|-c) NODE="control";;
         worker|-worker|-w)   NODE="worker";;
 
