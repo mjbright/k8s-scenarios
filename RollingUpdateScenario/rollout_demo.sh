@@ -3,16 +3,20 @@
 . ../demos.rc
 
 #APP_NAME=ckad-demo
+#APP_CONTAINER=ckad-demo
+#IMAGE_BASE=mjbright/ckad-demo
+#IMAGE_TAG_PREFIX=""
 APP_NAME=web
-APP_CONTAINER=ckad-demo
-IMAGE_BASE=mjbright/ckad-demo
+APP_CONTAINER=k8s-demo
+IMAGE_BASE=mjbright/k8s-demo
+IMAGE_TAG_PREFIX="alpine"
 DEPLOY=deploy/$APP_NAME
 SVC=svc/$APP_NAME
 
 TMP=~/tmp/demos
 mkdir -p $TMP
 
-# NOTE: kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:1 --dry-run=client -o yaml | kubectl create -f - --record=true
+# NOTE: kubectl create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1 --dry-run=client -o yaml | kubectl create -f - --record=true
 # Will only record:
 #     REVISION  CHANGE-CAUSE
 #     1         kubectl create --filename=- --record=true
@@ -61,8 +65,8 @@ BLUE_GREEN() {
    kubectl get deploy ${APP_NAME}-green 2>/dev/null | grep -q ${APP_NAME}-green &&
        RUN kubectl delete deploy ${APP_NAME}-green
 
-   RUN_PRESS kubectl create deploy ${APP_NAME}-blue --image ${IMAGE_BASE}:1
-   RUN_PRESS kubectl create deploy ${APP_NAME}-green --image ${IMAGE_BASE}:3
+   RUN_PRESS kubectl create deploy ${APP_NAME}-blue --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1
+   RUN_PRESS kubectl create deploy ${APP_NAME}-green --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3
    RUN kubectl scale deploy ${APP_NAME}-blue --replicas 3
    RUN kubectl scale deploy ${APP_NAME}-green --replicas 3
 
@@ -112,25 +116,25 @@ case $STRATEGY in
         # RECREATE:
         YAML1=$TMP/deploy_${APP_NAME}.yaml
         YAML2=$TMP/deploy_${APP_NAME}_recreate.yaml
-	echo
-	echo "Creating yaml file for blue and green deployments:"
-        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:1 --dry-run=client -o yaml > $YAML1
+        echo
+        echo "Creating yaml file for blue and green deployments:"
+        kubectl create deploy ${APP_NAME} --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1 --dry-run=client -o yaml > $YAML1
         ls -al $YAML1
         sed -e 's/strategy: {}/strategy:\n    type: Recreate/' < $YAML1 > $YAML2
         ls -al $YAML2
         echo
-	echo "---- diff $YAML1 $YAML2"
+        echo "---- diff $YAML1 $YAML2"
         diff $YAML1 $YAML2
-    	RUN_PRESS kubectl create -f $YAML2
+        RUN_PRESS kubectl create -f $YAML2
         # exit $?
-	;;
+        ;;
     BLUEGREEN)
-       	BLUE_GREEN;
-	PRESS "Cleanup"
-	kubectl delete svc ${APP_NAME}
-	kubectl delete deploy ${APP_NAME}-blue
-	kubectl delete deploy ${APP_NAME}-green
-	exit $?;;
+        BLUE_GREEN;
+        PRESS "Cleanup"
+        kubectl delete svc ${APP_NAME}
+        kubectl delete deploy ${APP_NAME}-blue
+        kubectl delete deploy ${APP_NAME}-green
+        exit $?;;
 esac
 
 RUN_PRESS kubectl expose $DEPLOY  --port 80
@@ -140,16 +144,17 @@ RUN_PRESS kubectl scale $DEPLOY --replicas=10
 
 echo
 echo "NOTE: remember pause/resume during rollout"
-RUN_PRESS kubectl set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:2 --record
+RUN_PRESS kubectl set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2 --record
 RUN_PRESS kubectl rollout pause  $DEPLOY
 RUN_PRESS kubectl rollout resume $DEPLOY
 RUN kubectl rollout status ${DEPLOY}
 RUN_PRESS kubectl rollout history ${DEPLOY}
 
-RUN_PRESS kubectl set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE_BASE}:3 --record
+RUN_PRESS kubectl set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3 --record
 RUN kubectl rollout status ${DEPLOY}
 RUN_PRESS kubectl rollout history ${DEPLOY}
-RUN_PRESS kubectl rollout undo ${DEPLOY}
+#RUN_PRESS kubectl rollout undo ${DEPLOY}
+RUN_PRESS kubectl rollout undo ${DEPLOY} --to-revision 1
 
 exit 0
 
