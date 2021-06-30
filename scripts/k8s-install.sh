@@ -31,8 +31,8 @@ VERBOSE_PROMPT=1 # On first PRESS
 VERBOSE_PROMPT=2 # Always
 VERBOSE_PROMPT=1
 
-#K8S_REL="1.20.1-00"
-K8S_REL="1.21.1-00"
+K8S_REL="1.20.1-00"
+#K8S_REL="1.21.1-00"
 [ -f /tmp/k8s-release ] && K8S_REL=$(cat /tmp/k8s-release)
 
 USE_PV=1
@@ -897,6 +897,8 @@ while [ ! -z "$1" ]; do
              K8S_REL="${K8S_REL%-00}-00"
              ;;
 
+	# LFS458: uses k8scp as control node name:
+        lfs|-lfs|-k8scp)     NODE="k8scp";;
         control|-control|-c) NODE="control";;
         worker|-worker|-w)   NODE="worker";;
 
@@ -920,6 +922,14 @@ YESNO "About to install Kubernetes $K8S_REL on this $NODE node - OK" "$DEFAULT" 
 CHOOSE_CIDR
 
 case $NODE in
+    k8scp)
+        #[ $HOSTNAME != "control" ] &&
+        SET_NODENAME=k8scp
+        [ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
+        hostname | grep -iq $SET_NODENAME ||
+            YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
+                sudo hostnamectl set-hostname $SET_NODENAME
+	;;
     control)
         #[ $HOSTNAME != "control" ] &&
         SET_NODENAME=control
