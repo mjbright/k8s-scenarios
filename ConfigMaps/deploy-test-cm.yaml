@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-test-cm
+  labels:
+    app: deploy-test-cm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deploy-test-cm
+  template:
+    metadata:
+      labels:
+        app: deploy-test-cm
+    spec:
+      containers:
+      - image: alpine
+        name: alpine
+        command: ['/bin/sleep', '3600000']
+        volumeMounts:
+        - name: test-vol-cm
+          mountPath: /home/vol-cm
+      volumes:
+      - name: test-vol-cm
+        configMap:
+          name: test-cm

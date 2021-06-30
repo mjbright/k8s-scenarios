@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  file1: value10001000
+  file2: value20002000
+  file3: value30003000
+  file4: value40004000
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: test-cm
