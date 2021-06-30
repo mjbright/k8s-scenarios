@@ -1,5 +1,9 @@
 #!/bin/bash
 
+die() { echo "$0: die - $*" >&2; exit 1; }
+
+which helm >/dev/null || die "You need to install helm first"
+
 UNINSTALL() {
     helm uninstall -n metrics-server my-metrics-server
 }
