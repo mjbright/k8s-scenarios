@@ -491,9 +491,10 @@ USAGE() {
     echo "Usage:"
     echo "    $0 [-c|-w] [-r|-R] [-i|-ki|-I] [-kr]"
     echo
-    echo "Specify node type:"
-    echo "    -c: control node (master)"
-    echo "    -w: worker node"
+    echo "Specify node role:"
+    echo "    -c:     control node (master)"
+    echo "    -k8scp: control node (using LFS458 naming)"
+    echo "    -w:     worker node"
     echo
     echo "Reset actions:"
     echo "    -r: soft reset (undo kubeadm actions)"
@@ -557,7 +558,7 @@ INSTALL_PKGS() {
     RUN sudo swapoff -a
 
     STEP_HEADER "INSTALL_PKGS:"  "Package installation & configuration complete"
-    [ "$NODE" = "control"  ] && return
+    [ "$NODE_ROLE" = "control"  ] && return
 
     echo "Now manually join this node to the cluster"
     echo "The command to use on this node was previously saved in"
@@ -821,8 +822,8 @@ QUICK_RESET_UNINSTALL_REINSTALL() {
     PV_RATE=100
     HARD_RESET_NODE
 
-    [ "$NODE" = "worker"  ] && INSTALL_PKGS
-    [ "$NODE" = "control" ] && INSTALL_PKGS_INIT
+    [ "$NODE_ROLE" = "worker"  ] && INSTALL_PKGS
+    [ "$NODE_ROLE" = "control" ] && INSTALL_PKGS_INIT
 }
 
 UNTAINT_CONTROL_NODE() {
@@ -859,7 +860,7 @@ CHOOSE_CIDR() {
 ## Args: ------------------------------------------------------
 
 ACTION=""
-NODE=""
+NODE_ROLE=""
 
 # echo -e "${GREEN}Hello world${NORMAL}" | PV
 # exit
@@ -915,42 +916,31 @@ done
 
 ## Main: ------------------------------------------------------
 
-DEFAULT="n"
-[ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
-YESNO "About to install Kubernetes $K8S_REL on this $NODE node - OK" "$DEFAULT" || exit 1
-
 CHOOSE_CIDR
 
 case $NODE in
-    k8scp)
-        #[ $HOSTNAME != "control" ] &&
-        SET_NODENAME=k8scp
-        [ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
-        hostname | grep -iq $SET_NODENAME ||
-            YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
-                sudo hostnamectl set-hostname $SET_NODENAME
-	;;
-    control)
-        #[ $HOSTNAME != "control" ] &&
-        SET_NODENAME=control
-        [ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
-        hostname | grep -iq $SET_NODENAME ||
-            YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
-                sudo hostnamectl set-hostname $SET_NODENAME
-	;;
-    worker)
-        #[ $HOSTNAME != "worker" ] &&
-        SET_NODENAME=worker
-        [ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
-        hostname | grep -iq $SET_NODENAME ||
-            YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
-                sudo hostnamectl set-hostname $SET_NODENAME
-	;;
-    *) die "Unknown node type '$NODE'";;
+    k8scp)   NODE_ROLE="control"; SET_NODENAME=k8scp ;;
+    control) SET_NODENAME=control ;;
+    worker)  SET_NODENAME=worker ;;
+    *) die "Unknown node option '$NODE'";;
 esac
+
+DEFAULT="n"
+[ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
+YESNO "About to install Kubernetes $K8S_REL on this $NODE_ROLE node - OK" "$DEFAULT" || exit 1
 
 HOSTNAME=$(hostname)
 
+[ ! -z "$FORCE_NODENAME" ] && SET_NODENAME=$FORCE_NODENAME
+[ $HOSTNAME != "$SET_NODENAME" ] && {
+    hostname | grep -iq "^${SET_NODENAME}$" ||
+        YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
+            sudo hostnamectl set-hostname $SET_NODENAME
+
+    HOSTNAME=$(hostname)
+}
+
+#HAPPY_SAILING; die "OK"
 INSTALL_TOOLS
 
 case $ACTION in
@@ -958,13 +948,13 @@ case $ACTION in
     SOFT_RESET_NODE) SOFT_RESET_NODE; exit $?;;
 esac
 
-[ "$NODE" = "worker"  ] && [ -z "$ACTION" ] && ACTION="INSTALL_PKGS"
-[ "$NODE" = "control" ] && [ -z "$ACTION" ] && ACTION="INSTALL_PKGS_INIT"
+[ "$NODE_ROLE" = "worker"  ] && [ -z "$ACTION" ] && ACTION="INSTALL_PKGS"
+[ "$NODE_ROLE" = "control" ] && [ -z "$ACTION" ] && ACTION="INSTALL_PKGS_INIT"
 
-[ -z "$NODE" ]   && die "Unset node type '\$NODE' - use -c or -w options"
+[ -z "$NODE_ROLE" ]   && die "Unset node role '\$NODE_ROLE' - use -c, -k8scp or -w options"
 [ -z "$ACTION" ] && die "Unset action '\$ACTION'"
 
-[ "$NODE" = "worker"  ] && [ "$ACTION" = "INSTALL_PKGS_INIT" ] &&
+[ "$NODE_ROLE" = "worker"  ] && [ "$ACTION" = "INSTALL_PKGS_INIT" ] &&
     die "Invalid action '$ACTION' for a worker node"
 #die "OK"
 
