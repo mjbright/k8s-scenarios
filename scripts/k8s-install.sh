@@ -804,6 +804,7 @@ KUBEADM_INIT() {
     echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
     #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
     RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
+    RUN sudo kubeadm config view > /root/kubeadm-config.yaml
 
     # Extract join command:
     grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
@@ -823,7 +824,9 @@ KUBEADM_INIT() {
     RUN kubectl get nodes
 
     STEP_HEADER "INSTALL_INIT:"  "Install Calico networking plugin"
-    RUN kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+    # Keep local copy of calico.yaml:
+    RUN wget -O ~/calico.yaml https://docs.projectcalico.org/manifests/calico.yaml
+    RUN kubectl apply -f ~/calico.yaml
 
     # From: https://stackoverflow.com/questions/53198576/ansible-playbook-wait-until-all-pods-running
     
@@ -877,6 +880,8 @@ UNTAINT_CONTROL_NODE() {
 }
 
 CHOOSE_CIDR() {
+    # Adapt POD_CIDR range:
+    # - detect if management network is 192.168.0.x, if so choose 192.168.128.0/18 as Pod subnet
 
     IP1=$( ip a|grep -A 4 ^2: | grep " inet " | sed -e 's/.* inet //' -e 's?/.*??' )
     IP_PART=${IP1%.*}
