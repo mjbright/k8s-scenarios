@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Quick control node: no prompts
+#   $0 -I -ANP
+
+# Quick worker node: no prompts (still need join afterwards):
+#   $0 -i -ANP
+
 # This script downloadable from:
 #     https://github.com/mjbright/k8s-scenarios/blob/master/scripts/k8s-install.sh
 # using:
