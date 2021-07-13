@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # Quick control node: no prompts
+#   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
+#   $0 -r -ANP # soft-reset cluster (deletes cluster)
 #   $0 -I -ANP
 
 # Quick worker node: no prompts (still need join afterwards):
+#   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
+#   $0 -r -ANP # soft-reset cluster (deletes cluster)
 #   $0 -i -ANP
 
 # This script downloadable from:
