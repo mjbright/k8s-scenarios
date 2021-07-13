@@ -501,7 +501,7 @@ REMOVE_DOCKER() {
     #dpkg -l | grep "^[hi]i " | awk '($2 ~ /docker|containerd/) { print $2; }'
     #PKGS_TO_REMOVE=$?
 
-    DOCKER_PACKAGES=$( dpkg -l | grep "^[hi]i " | awk '($2 ~ /docker|containerd/) { print $2; }' )
+    DOCKER_PACKAGES=$( dpkg -l | grep "^[hi]i " | awk '($2 ~ /docker|containerd|cri-o/) { print $2; }' )
     [ -z "$DOCKER_PACKAGES" ] && {
         echo "... no Docker packages to be removed"
         return
@@ -511,6 +511,8 @@ REMOVE_DOCKER() {
     YESNO "Remove Docker - remove packages" "y" || exit 0
 
     RUN sudo apt-get  remove -y $DOCKER_PACKAGES
+
+    [ -d /var/run/crio ] && RUN sudo rm -rf /var/run/crio
 }
 
 USAGE() {
