@@ -966,9 +966,9 @@ while [ ! -z "$1" ]; do
              ;;
 
 	# LFS458: uses k8scp as control node name:
-        lfs|-lfs|k8scp|-k8scp)     NODE="k8scp";;
-        control|-control|-c) NODE="control";;
-        worker|-worker|-w)   NODE="worker";;
+        lfs|-lfs|k8scp|-k8scp) INSTALL_MODE="LFS458";;
+        control|-control|-c)   NODE="control";;
+        worker|-worker|-w)     NODE="worker";;
 
         -h|-?)   USAGE; exit 0;;
 
@@ -980,6 +980,10 @@ while [ ! -z "$1" ]; do
     esac
     shift
 done
+
+[ $INSTALL_MODE = "LFS458" ] && [ $NODE = "control" ] && NODE="k8scp"
+
+echo "INSTALL_MODE=$INSTALL_MODE NODE=$NODE K8S_REL=$K8S_REL"
 
 ## Main: ------------------------------------------------------
 
