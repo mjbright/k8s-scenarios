@@ -17,7 +17,6 @@
 
 mkdir -p ~/tmp
 
-
 POD_CIDR="192.168.0.0/16"
 
 # Installation loosely based on:
@@ -986,6 +985,9 @@ done
 echo "INSTALL_MODE=$INSTALL_MODE NODE=$NODE K8S_REL=$K8S_REL"
 
 ## Main: ------------------------------------------------------
+
+UID=$(id -u)
+[ $UID -eq 0 ] && die "Run this script as non-root user (but with sudo capabilities)"
 
 CHOOSE_CIDR
 
