@@ -28,8 +28,6 @@ POD_CIDR="192.168.0.0/16"
 CONTAINER_ENGINE="DOCKER"
 INSTALL_CE=INSTALL_${CONTAINER_ENGINE}
 
-HOSTNAME=$(hostname)
-
 PROMPTS=${PROMPTS:=1}
 ALL_PROMPTS=${ALL_PROMPTS:=1}
 ABS_NO_PROMPTS=0
@@ -41,9 +39,28 @@ VERBOSE_PROMPT=1 # On first PRESS
 VERBOSE_PROMPT=2 # Always
 VERBOSE_PROMPT=1
 
-K8S_REL="1.20.1-00"
-#K8S_REL="1.21.1-00"
-[ -f /tmp/k8s-release ] && K8S_REL=$(cat /tmp/k8s-release)
+HOSTNAME=$(hostname)
+NODE="control"
+NODE_ROLE="control"
+INSTALL_MODE="GENERAL"
+# START: SET_INSTALL DEFAULTS: ----------------------------------
+LFS_K8S_REL="1.20.1-00"
+K8S_REL="1.21.1-00"
+
+case $0 in
+    *LFS458*|*lfs458*) K8S_REL=$LFS_K8S_REL; INSTALL_MODE="LFS458";;
+esac
+case $0 in
+    *-w*) NODE="worker"; NODE_ROLE="worker" ;;
+esac
+
+#[ -f /tmp/k8s-release ] && K8S_REL=$(cat /tmp/k8s-release)
+RC=${0%.sh}.rc
+[ -f $RC ] && {
+    echo "Sourcing $RC ..."
+    source $RC
+}
+# END:   SET_INSTALL DEFAULTS: ----------------------------------
 
 USE_PV=1
 PV_PROMPT=0
@@ -905,13 +922,16 @@ CHOOSE_CIDR() {
 ## Args: ------------------------------------------------------
 
 ACTION=""
-NODE_ROLE=""
 
 # echo -e "${GREEN}Hello world${NORMAL}" | PV
 # exit
 
 #HAPPY_SAILING; die "OK"
 
+[ -z "$1" ] && {
+    [ "$NODE" = "control" ] && set -- -I;
+    [ "$NODE" = "worker"  ] && set -- -i;
+}
 [ -z "$1" ] && { USAGE; die "Missing options"; }
 
 while [ ! -z "$1" ]; do
