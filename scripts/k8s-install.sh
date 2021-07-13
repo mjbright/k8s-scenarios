@@ -832,8 +832,8 @@ KUBEADM_INIT() {
     echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
     #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
     RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
-    RUN sudo kubeadm config view > /root/kubeadm-config.yaml
 
+    RUN sudo kubeadm config view | sudo tee /root/kubeadm-config.yaml
     # Extract join command:
     grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
