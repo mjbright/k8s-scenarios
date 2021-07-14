@@ -6,12 +6,6 @@ import json
 
 STRIP_DATE=True
 
-def do_v1(cmd):
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (std, err) = p.communicate()
-    # rc = p.returncode
-    return (std, err)
-
 def do(cmd):
     p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     (std, err) = p.communicate()
@@ -21,23 +15,6 @@ def do(cmd):
     stderr = err.decode("utf-8"); lines = stderr.split('\n'); ret_stderr = '\n'.join(lines)
 
     return (ret_stdout, ret_stderr)
-
-def bad_do(cmd):
-    #subprocess.check_output(cmd, *, stdin=None, stderr=None, shell=False, universal_newlines=False)
-    s = subprocess.check_output(cmd, shell=True, stderr=subprocess.PIPE)
-    (std, err) = p.communicate()
-    return (s, err)
-
-
-def readfile(path, mode='r'):
-    ifd = open(path, mode)
-
-    #line1=ifd.readline()
-    #for line in ifd.readlines(): print(line)
-    ret=ifd.read()
-    ifd.close()
-
-    return ret
 
 def writefile(path, mode='w', text='hello world\n'):
     ofd = open(path, mode)
