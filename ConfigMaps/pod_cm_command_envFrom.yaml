@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: cm-testpod
+  name: cm-testpod
+spec:
+  containers:
+  - image: alpine
+    name: cm-testpod
+    command: ['bin/sh', '-c', 'echo $(key1) - ${key1}; echo "--"; echo "env:"; printenv']
+    envFrom:
+    - configMapRef:
+        # The ConfigMap containing the value you want to assign to SPECIAL_LEVEL_KEY
+        name: test1

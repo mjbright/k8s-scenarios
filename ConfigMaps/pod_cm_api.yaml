@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: cm-testpod
+  name: cm-testpod
+spec:
+  initContainers:
+  - image: alpine
+    name: init1
+    # Install full version of wget which has '--no-check-certificate' option
+    command: ['bin/sh', '-c', 'apk add wget']
+
+  containers:
+  - image: alpine
+    # sleep 10 hours: command: ['bin/sh', '-c', '/bin/sleep 36000']
+    name: cm-testpod
+
+    # Note: obtains default serviceaccount token - requires view ClusterRole to be bound to this account
+    command: ['bin/sh', '-c', 'TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); set -x; wget --no-check-certificate -qO - --header "Authorization: Bearer $TOKEN" https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_PORT_443_TCP_PORT}/api/v1/namespaces/default/configmaps/test1; /bin/sleep 36000']

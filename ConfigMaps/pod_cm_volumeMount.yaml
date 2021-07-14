@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: cm-testpod
+  name: cm-testpod
+spec:
+  containers:
+  - image: alpine
+    name: cm-testpod
+    command: ['bin/sh', '-c', 'df | grep test1; ls -altr /mnt/test1/']
+    volumeMounts:
+    - name: test-vol-cm
+      mountPath: /mnt/test1
+
+  volumes:
+  - name: test-vol-cm
+    configMap:
+      name: test1
+
