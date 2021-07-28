@@ -30,5 +30,52 @@ FROM_POD() {
     kubectl run testpod --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
 }
 
-FROM_POD
+ON_CLUSTER_NODE_P() {
+    echo "Checking if running on Cluster node:"
+
+    echo; echo "---- Looking to see if a kubelet is running on this node:"
+    ps -fade | grep -v grep | grep 'kubelet ' || {
+        echo; echo "---- Not a cluster node: No kubelet running locally"
+        return 1
+    }
+
+    echo; echo "---- Trying to obtain current context"
+    CONTEXT=$( kubectl config get-contexts -o name --context current )
+    [ -z "$CONTEXT" ] && {
+        echo; echo "---- Not a cluster node: failed to get cluster context"
+        return 1
+    }
+
+    echo; echo "---- Trying to obtain apiserver ip address of current context"
+    IP=$( kubectl config view --context $CONTEXT  | grep -m 1 server: | sed -e 's?.*https://??' -e 's/:.*//' )
+    HOST_IP=$( hostname -i )
+
+    [ -z "$IP" ] && {
+        echo; echo "---- Not a cluster node: failed to get apiserver ip address"
+        return 1
+    }
+
+    [ -z "$HOST_IP" ] && {
+        echo; echo "---- Not a cluster node: failed to get hostname ip address"
+        return 1
+    }
+
+    echo; echo "---- Comparing apiserver ip address with address of this node"
+    [ "$IP" != "$HOST_IP" ] && {
+        echo; echo "---- Not a cluster node: apiserver ip ($IP) != host ip address ($HOST_IP)"
+        return 1
+    }
+
+    echo; echo "---- Looks like we're running on the active control plane node"
+    return 0
+}
+
+if ON_CLUSTER_NODE_P ; then
+    echo; echo "Looks like we're running on the main control-plane node - using curl directly"
+    LOOP_CONNECT_FROM_LOCAL_NODE
+else
+    echo; echo "Looks like we're running on a remote node - using wget from a Pod"
+    FROM_POD
+fi
+
 
