@@ -7,7 +7,7 @@ metadata:
     kubernetes.io/ingress.class: "nginx"
 spec:
   rules:
-  - host: ingress1.mjbright.click
+  - host: web1.foo.org
     http:
       paths:
       - path: /
@@ -24,7 +24,7 @@ metadata:
     kubernetes.io/ingress.class: "nginx"
 spec:
   rules:
-  - host: ingress2.mjbright.click
+  - host: web2.foo.org
     http:
       paths:
       - path: /
@@ -41,7 +41,7 @@ metadata:
     kubernetes.io/ingress.class: "nginx"
 spec:
   rules:
-  - host: ingress3.mjbright.click
+  - host: web3.foo.org
     http:
       paths:
       - path: /
