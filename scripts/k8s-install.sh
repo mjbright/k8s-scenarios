@@ -19,12 +19,23 @@ mkdir -p ~/tmp
 
 POD_CIDR="192.168.0.0/16"
 
+die() {
+    echo -e "${RED}$0: die - ${NORMAL}$*" >&2
+    for i in 0 1 2 3 4 5 6 7 8 9 10;do
+        CALLER_INFO=`caller $i`
+        [ -z "$CALLER_INFO" ] && break
+        echo "    Line: $CALLER_INFO" >&2
+    done
+    exit 1
+}
+
 # Installation loosely based on:
 # - https://computingforgeeks.com/deploy-kubernetes-cluster-on-ubuntu-with-kubeadm
 
 # TODO: remove DOCKER packages in hard-reset (which version docker.io docker-ce both?)
 # TODO: Make configurable to use Docker/Containerd/Cri-o (+podman/buildah/skopeo)
-CONTAINER_ENGINE="DOCKER"
+#CONTAINER_ENGINE="DOCKER"
+CONTAINER_ENGINE="CRIO"
 INSTALL_CE=INSTALL_${CONTAINER_ENGINE}
 
 PROMPTS=${PROMPTS:=1}
@@ -41,17 +52,48 @@ VERBOSE_PROMPT=1
 HOSTNAME=$(hostname)
 NODE="control"
 NODE_ROLE="control"
+NODE_NUM=""
 INSTALL_MODE="GENERAL"
-# START: SET_INSTALL DEFAULTS: ----------------------------------
-LFS_K8S_REL="1.20.1-00"
-K8S_REL="1.21.1-00"
 
-case $0 in
-    *LFS458*|*lfs458*) K8S_REL=$LFS_K8S_REL; INSTALL_MODE="LFS458";;
-esac
+# START: SET_INSTALL DEFAULTS: ----------------------------------
+
+## . /etc/os-release
+# Fix the versions to use
+export OS=xUbuntu_18.04 # Override true OS version
+LFS_K8S_VERSION="1.21.1-00"
+K8S_VERSION="1.22.0-00"
+LFS_K8S_REL=${LFS_K8S_VERSION%-00}
+K8S_REL=${K8S_VERSION%-00}
+#K8S_MIN_VERSION=${K8S_REL%.*}
+
+SET_INSTALL_MODE() {
+    INSTALL_MODE=$1; shift
+
+    case $INSTALL_MODE in
+    *LFS458*|*lfs458*)
+      K8S_VERSION=$LFS_K8S_VERSION; K8S_REL=$LFS_K8S_REL;
+      K8S_MIN_VERSION=${K8S_REL%.*} # e.g. 1.21.1 => 1.21
+      [ $NODE = "control" ] && NODE="k8scp"
+      INSTALL_MODE="LFS458"
+      ;;
+    *LFD459*|*lfd459*)
+      K8S_VERSION=$LFS_K8S_VERSION; K8S_REL=$LFS_K8S_REL;
+      K8S_MIN_VERSION=${K8S_REL%.*}
+      [ $NODE = "control" ] && NODE="k8scp"
+      INSTALL_MODE="LFD459"
+      ;;
+    esac
+    echo "INSTALL_MODE=$INSTALL_MODE NODE=$NODE[$NODE_ROLE]"
+    echo "K8S_REL=$K8S_REL K8S_VERSION[apt]=$K8S_VERSION"
+      #die "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
+}
+
+NODE_ROLE="control"
 case $0 in
     *-w*) NODE="worker"; NODE_ROLE="worker" ;;
 esac
+
+SET_INSTALL_MODE $INSTALL_MODE
 
 #[ -f /tmp/k8s-release ] && K8S_REL=$(cat /tmp/k8s-release)
 RC=${0%.sh}.rc
@@ -90,16 +132,6 @@ PV_RATE=20
 # - install metrics-server
 
 ## Functions: -------------------------------------------------
-
-die() {
-    echo -e "${RED}$0: die - ${NORMAL}$*" >&2
-    for i in 0 1 2 3 4 5 6 7 8 9 10;do
-        CALLER_INFO=`caller $i`
-        [ -z "$CALLER_INFO" ] && break
-        echo "    Line: $CALLER_INFO" >&2
-    done
-    exit 1
-}
 
 GET_NODE_INFO() {
     . /etc/lsb-release
@@ -493,8 +525,14 @@ HARD_RESET_NODE() {
 
     case ${CONTAINER_ENGINE} in
         DOCKER) REMOVE_DOCKER;;
+        CRIO)   REMOVE_CRIO;;
         *) die "TODO: ${CONTAINER_ENGINE}";;
     esac
+}
+
+REMOVE_CRIO() {
+    RUN sudo apt-get remove -y cri-o cri-o-runc podman buildah
+    [ -d /var/run/crio ] && RUN sudo rm -rf /var/run/crio
 }
 
 REMOVE_DOCKER() {
@@ -571,7 +609,8 @@ INSTALL_PKGS() {
     RUN sudo apt -qq update
 
     STEP_HEADER "INSTALL_PKGS:"  "Install the Kubernetes packages kubeadm (installer), kubectl (client), kubelet (manages Docker)"
-    RUN sudo apt install -qq -y kubelet=$K8S_REL kubeadm=$K8S_REL kubectl=$K8S_REL 
+    RUN sudo apt-mark unhold kubectl kubeadm kubelet
+    RUN sudo apt install -qq -y kubelet=$K8S_VERSION kubeadm=$K8S_VERSION kubectl=$K8S_VERSION 
 
     STEP_HEADER "INSTALL_PKGS:"  "'mark' the packages as held at their current version - prevent accidental upgrades"
     RUN sudo apt-mark hold kubelet kubeadm kubectl
@@ -701,8 +740,6 @@ CHECK_DOCKER_STARTED() {
 }
 
 INSTALL_CRIO() {
-    die "TODO"
-
     STEP_HEADER "INSTALL_CRIO:"  "..."
     # Ensure you load modules
     sudo modprobe overlay
@@ -718,19 +755,56 @@ EOF
     # Reload sysctl
     sudo sysctl --system
 
+    NODE_N="control"
+    case $NODE_ROLE in
+        control) NODE_N="control";;
+        *)       NODE_N="worker";;
+    esac
+
+    # TODO: make sure we get the correct IPv4 address:
+    IP=$(hostname -i)
+    grep "^$IP " /etc/hosts ||
+        echo $(hostname -i) ${NODE_N}${NODE_NUM} | sudo tee -a /etc/hosts
+
     # Add repo
-    . /etc/os-release
-    sudo sh -c "echo 'deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/x${NAME}_${VERSION_ID}/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list"
-    wget -nv https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/x${NAME}_${VERSION_ID}/Release.key -O- | sudo apt-key add -
-    sudo apt -qq update
+
+    set -x
+    APT_FILE=/etc/apt/sources.list.d/cri-0.list
+    REPO_1="deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$K8S_MIN_VERSION/$OS/ /"
+    grep "$REPO_1" $APT_FILE ||
+        echo $REPO_1 | sudo tee -a $APT_FILE
+
+    # K8S_MIN_VERSION=${K8S_REL%.*}
+    RELEASE_KEY_URL=http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$K8S_MIN_VERSION/$OS/Release.key
+    curl -L $RELEASE_KEY_URL | sudo apt-key add -
+      echo "RELEASE_KEY_URL='$RELEASE_KEY_URL'"
+      echo "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
+      #die "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
+
+    REPO_2="deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /"
+    APT_FILE2=/etc/apt/sources.list.d/libcontainers.list
+    grep "$REPO_2" $APT_FILE2 ||
+        echo $REPO_2 | sudo tee -a $APT_FILE2
+    set +x
+    #sudo apt -qq update
+    RUN sudo apt-get update
 
     # Install CRI-O
-    RUN sudo apt install cri-o-1.17
+    RUN sudo apt-get install -y cri-o cri-o-runc podman buildah
+
+    # Fix if needed for https://github.com/containers/podman/issues/9363
+    sudo sed -i 's/,metacopy=on//g' /etc/containers/storage.conf
 
     STEP_HEADER "INSTALL_CRIO:"  "Start & enable Services"
     RUN sudo systemctl daemon-reload
-    RUN sudo systemctl start crio
+    sleep 5
+    RUN sudo systemctl start  crio
     RUN sudo systemctl enable crio
+    RUN sudo systemctl status crio | grep failed && {
+        die "Docker install failed - try restarting using 'sudo systemctl start docker'"
+    }
+
+    echo "CRI-O is running OK"
 }
 
 INSTALL_CONTAINERD() {
@@ -967,9 +1041,11 @@ while [ ! -z "$1" ]; do
              ;;
 
 	# LFS458: uses k8scp as control node name:
-        lfs|-lfs|k8scp|-k8scp) INSTALL_MODE="LFS458";;
-        control|-control|-c)   NODE="control";;
-        worker|-worker|-w)     NODE="worker";;
+        lfs*|-lfs*|k8scp|-k8scp) SET_INSTALL_MODE LFS458;;
+        lfd*|-lfd*)              SET_INSTALL_MODE LFD459;;
+        control|-control|-c)   NODE="control"; NODE_ROLE="control";;
+        worker|-worker|-w)     NODE="worker";  NODE_ROLE="worker";;
+        -[0-9]) NODE_NUM=${1#-};;
 
         -h|-?)   USAGE; exit 0;;
 
@@ -982,21 +1058,17 @@ while [ ! -z "$1" ]; do
     shift
 done
 
-[ $INSTALL_MODE = "LFS458" ] && [ $NODE = "control" ] && NODE="k8scp"
-
-echo "INSTALL_MODE=$INSTALL_MODE NODE=$NODE K8S_REL=$K8S_REL"
-
 ## Main: ------------------------------------------------------
 
-UID=$(id -u)
-[ $UID -eq 0 ] && die "Run this script as non-root user (but with sudo capabilities)"
+USERID=$(id -u)
+[ $USERID -eq 0 ] && die "Run this script as non-root user (but with sudo capabilities)"
 
 CHOOSE_CIDR
 
 case $NODE in
     k8scp)   NODE_ROLE="control"; SET_NODENAME=k8scp ;;
-    control) SET_NODENAME=control ;;
-    worker)  SET_NODENAME=worker ;;
+    control) SET_NODENAME=control$NODE_NUM ;;
+    worker)  SET_NODENAME=worker$NODE_NUM ;;
     *) die "Unknown node option '$NODE'";;
 esac
 
