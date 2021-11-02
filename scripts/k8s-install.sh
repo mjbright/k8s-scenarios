@@ -29,6 +29,20 @@ die() {
     exit 1
 }
 
+CLEANUP_DOCKER_CRIO() {
+    sudo apt-get remove -y docker.io containerd cri-tools
+
+    # check for running processes
+    #   dpkg -l | grep -iE "docker|container|cri"
+    #   ls -al /var/run/ | grep -iE "docker|cri|container"
+    #   ps -fade | grep -iE "docker|cri|container"
+    #   ls -al /var/lib/ | grep -iE "docker|cri|container"
+
+    sudo rm -rf /var/lib/containerd/ /var/lib/docker/
+    sudo rm -rf /var/run/docker* /var/run/containerd/
+}
+
+
 # Installation loosely based on:
 # - https://computingforgeeks.com/deploy-kubernetes-cluster-on-ubuntu-with-kubeadm
 
@@ -61,8 +75,10 @@ INSTALL_MODE="GENERAL"
 # Fix the versions to use
 export OS=xUbuntu_18.04 # Override true OS version
 LFS_K8S_VERSION="1.21.1-00"
+LFD_K8S_VERSION="1.22.1-00"
 K8S_VERSION="1.22.0-00"
 LFS_K8S_REL=${LFS_K8S_VERSION%-00}
+LFD_K8S_REL=${LFD_K8S_VERSION%-00}
 K8S_REL=${K8S_VERSION%-00}
 #K8S_MIN_VERSION=${K8S_REL%.*}
 
@@ -77,15 +93,20 @@ SET_INSTALL_MODE() {
       INSTALL_MODE="LFS458"
       ;;
     *LFD459*|*lfd459*)
-      K8S_VERSION=$LFS_K8S_VERSION; K8S_REL=$LFS_K8S_REL;
+      K8S_VERSION=$LFD_K8S_VERSION; K8S_REL=$LFD_K8S_REL;
       K8S_MIN_VERSION=${K8S_REL%.*}
       [ $NODE = "control" ] && NODE="k8scp"
       INSTALL_MODE="LFD459"
+      ;;
+    *)
+      K8S_MIN_VERSION=${K8S_REL%.*}
       ;;
     esac
     echo "INSTALL_MODE=$INSTALL_MODE NODE=$NODE[$NODE_ROLE]"
     echo "K8S_REL=$K8S_REL K8S_VERSION[apt]=$K8S_VERSION"
       #die "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
+
+    [ -z "$K8S_MIN_VERSION" ] && die "[MODE=$INSTALL_MODE] K8S_MIN_VERSION is unset"
 }
 
 NODE_ROLE="control"
@@ -595,18 +616,26 @@ INSTALL_PKGS() {
     #echo "Installing Kubernetes release $K8S_REL"
     DEMO_HEADER "INSTALL_PKGS:"  "Add Docker & Kubernetes[$K8S_REL] package repositories & install packages"
 
+    CLEANUP_DOCKER_CRIO
+    [ -f /etc/apt/sources.list.d/cri-0.list ] &&
+        sudo rm /etc/apt/sources.list.d/cri-0.list
+    [ -f /etc/apt/sources.list.d/libcontainers.list ] &&
+        sudo rm /etc/apt/sources.list.d/libcontainers.list
+
+    # Install the chosen container engine:
     INSTALL_BASE_PKGS
     $INSTALL_CE
-    #INSTALL_DOCKER
 
     STEP_HEADER "INSTALL_PKGS:"  "Download/install the GPG key used to sign the Kubernetes packages"
     RUN 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -'
 
     STEP_HEADER "INSTALL_PKGS:"  "Configure the (apt) package tool to add the Kubernetes package repository"
+    [ -f /etc/apt/sources.list.d/kubernetes.list ] &&
+        sudo rm /etc/apt/sources.list.d/kubernetes.list
     RUN 'echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list'
 
     STEP_HEADER "INSTALL_PKGS:"  "Update the list of packages to take into account the added Kubernetes repository"
-    RUN sudo apt -qq update
+    RUN sudo apt -qq update || die "apt update failed"
 
     STEP_HEADER "INSTALL_PKGS:"  "Install the Kubernetes packages kubeadm (installer), kubectl (client), kubelet (manages Docker)"
     RUN sudo apt-mark unhold kubectl kubeadm kubelet
