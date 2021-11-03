@@ -10,8 +10,9 @@ UNINSTALL() {
 
 INSTALL() {
     kubectl create ns metrics-server
-    helm repo add metrics-server https://olemarkus.github.io/metrics-server
-    #helm search repo metrics-server
+    #helm repo add metrics-server https://olemarkus.github.io/metrics-server
+    helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
+    helm search repo metrics-server
     helm install my-metrics-server -n metrics-server metrics-server/metrics-server --set args='{--kubelet-preferred-address-types=InternalIP,--kubelet-insecure-tls}'
 }
 
