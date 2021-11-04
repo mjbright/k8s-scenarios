@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mkdir -p certs
+
 # Generate CA key and certificate
 openssl req -x509 -sha256 -newkey rsa:4096 -keyout certs/ca.key -out certs/ca.crt -days 356 -nodes -subj '/CN=Fern Cert Authority'
 
