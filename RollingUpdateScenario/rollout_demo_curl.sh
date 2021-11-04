@@ -4,8 +4,12 @@
 NAME=web
 [ ! -z "$1" ] && NAME=$1
 
+KUBECTL="kubectl -n demo"
+
+kubectl get ns demo || kubectl create ns demo
+
 GET_SVC_IP() {
-    IP=$(kubectl get svc $NAME --no-headers | awk '{ print $3; }')
+    IP=$($KUBECTL get svc $NAME --no-headers | awk '{ print $3; }')
 }
 
 GET_SVC_IP
@@ -27,7 +31,7 @@ LOOP_CONNECT_FROM_LOCAL_NODE() {
 
 FROM_POD() {
     set -x
-    kubectl run testpod --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
+    $KUBECTL run testpod --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
 }
 
 ON_CLUSTER_NODE_P() {
@@ -40,14 +44,14 @@ ON_CLUSTER_NODE_P() {
     }
 
     echo; echo "---- Trying to obtain current context"
-    CONTEXT=$( kubectl config get-contexts -o name --context current )
+    CONTEXT=$( $KUBECTL config get-contexts -o name --context current )
     [ -z "$CONTEXT" ] && {
         echo; echo "---- Not a cluster node: failed to get cluster context"
         return 1
     }
 
     echo; echo "---- Trying to obtain apiserver ip address of current context"
-    IP=$( kubectl config view --context $CONTEXT  | grep -m 1 server: | sed -e 's?.*https://??' -e 's/:.*//' )
+    IP=$( $KUBECTL config view --context $CONTEXT  | grep -m 1 server: | sed -e 's?.*https://??' -e 's/:.*//' )
     HOST_IP=$( hostname -i )
 
     [ -z "$IP" ] && {
