@@ -8,6 +8,7 @@ kind: Ingress
 metadata:
   name: ingress-web1
   annotations:
+    #nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     # use the shared ingress-nginx
     kubernetes.io/ingress.class: "nginx"
 spec:
