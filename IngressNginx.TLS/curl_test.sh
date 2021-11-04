@@ -1,3 +1,6 @@
+#!/bin/bash
+
+# See: https://medium.com/@awkwardferny/configuring-certificate-based-mutual-authentication-with-kubernetes-ingress-nginx-20e7e38fdfca
 
 which jq || sudo apt-get install -y jq
 
