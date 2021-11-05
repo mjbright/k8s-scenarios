@@ -16,6 +16,7 @@ spec:
     spec:
       containers:
       - image: mjbright/banner:hello1
+        imagePullPolicy: Always
         name: c1
 ---
 apiVersion: apps/v1
@@ -36,6 +37,7 @@ spec:
     spec:
       containers:
       - image: mjbright/banner:quiz
+        imagePullPolicy: Always
         name: c1
 ---
 apiVersion: apps/v1
@@ -56,4 +58,5 @@ spec:
     spec:
       containers:
       - image: mjbright/banner:vote
+        imagePullPolicy: Always
         name: c1
