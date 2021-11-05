@@ -60,3 +60,24 @@ spec:
       - image: mjbright/banner:vote
         imagePullPolicy: Always
         name: c1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: notfound404
+  name: notfound404
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notfound404
+  template:
+    metadata:
+      labels:
+        app: notfound404
+    spec:
+      containers:
+      - image: mjbright/banner:404
+        imagePullPolicy: Always
+        name: c1
