@@ -6,11 +6,16 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-web1
+  name: secure-ingress-web1
   annotations:
+    #nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     # use the shared ingress-nginx
     kubernetes.io/ingress.class: "nginx"
 spec:
+  tls:
+  - hosts:
+    - ingress1-g15.mjbright.click
+    secretName: certs-ingress1
   rules:
   - host: ingress1-g15.mjbright.click
     http:
@@ -26,11 +31,15 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-quiz
+  name: secure-ingress-quiz
   annotations:
     # use the shared ingress-nginx
     kubernetes.io/ingress.class: "nginx"
 spec:
+  tls:
+  - hosts:
+    - quiz-g15.mjbright.click
+    secretName: certs-quiz
   rules:
   - host: quiz-g15.mjbright.click
     http:
@@ -46,11 +55,15 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-vote
+  name: secure-ingress-vote
   annotations:
     # use the shared ingress-nginx
     kubernetes.io/ingress.class: "nginx"
 spec:
+  tls:
+  - hosts:
+    - vote-g15.mjbright.click
+    secretName: certs-vote
   rules:
   - host: vote-g15.mjbright.click
     http:
