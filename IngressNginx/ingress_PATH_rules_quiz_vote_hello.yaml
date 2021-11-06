@@ -1,0 +1,43 @@
+
+#        "ckad-15w", "ckad-15c",  "ingress1-G15","ingress2-G15","ingress3-G15","vote-G15","quiz-G15",
+
+
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-path
+  annotations:
+    # use the shared ingress-nginx
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  defaultBackend:
+    service:
+      name: notfound404
+      port:
+        number: 80
+  rules:
+  - host: ingress1.mjbright.click
+    http:
+      paths:
+      - path: /hello
+        backend:
+          service:
+            name: hello
+            port:
+              number: 80
+        pathType: ImplementationSpecific
+      - path: /vote
+        backend:
+          service:
+            name: vote
+            port:
+              number: 80
+        pathType: ImplementationSpecific
+      - path: /quiz
+        backend:
+          service:
+            name: quiz
+            port:
+              number: 80
+        pathType: ImplementationSpecific
