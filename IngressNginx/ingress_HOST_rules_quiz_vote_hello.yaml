@@ -17,7 +17,7 @@ spec:
       port:
         number: 80
   rules:
-  - host: ingress1-g15.mjbright.click
+  - host: ingress1.mjbright.click
     http:
       paths:
       - path: /
@@ -42,7 +42,7 @@ spec:
       port:
         number: 80
   rules:
-  - host: quiz-g15.mjbright.click
+  - host: quiz.mjbright.click
     http:
       paths:
       - path: /
@@ -67,7 +67,7 @@ spec:
       port:
         number: 80
   rules:
-  - host: vote-g15.mjbright.click
+  - host: vote.mjbright.click
     http:
       paths:
       - path: /
