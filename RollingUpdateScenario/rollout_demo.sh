@@ -116,6 +116,11 @@ done
 
 CLEANUP 2>/dev/null
 
+echo "
+Start k1s.py in namespace 'demo'
+    ./k1s.py -n demo
+"
+
 case $STRATEGY in
     ROLLING)
         #RUN_PRESS $KUBECTL create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1 --record
