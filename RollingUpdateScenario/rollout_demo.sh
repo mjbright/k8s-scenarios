@@ -72,7 +72,7 @@ BLUE_GREEN() {
        RUN $KUBECTL delete deploy ${APP_NAME}-green
 
    RUN_PRESS $KUBECTL create deploy ${APP_NAME}-blue --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1
-   RUN_PRESS $KUBECTL create deploy ${APP_NAME}-green --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3
+   RUN_PRESS $KUBECTL create deploy ${APP_NAME}-green --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2
    RUN $KUBECTL scale deploy ${APP_NAME}-blue --replicas 3
    RUN $KUBECTL scale deploy ${APP_NAME}-green --replicas 3
 
