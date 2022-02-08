@@ -36,7 +36,8 @@ die() {
 }
 
 CLEANUP_DOCKER_CRIO() {
-    sudo apt-get remove -y docker.io containerd cri-tools
+    RUN sudo apt-get remove -y docker.io containerd cri-tools
+    RUN sudo apt autoremove -y
 
     # check for running processes
     #   dpkg -l | grep -iE "docker|container|cri"
@@ -563,7 +564,10 @@ HARD_RESET_NODE() {
 
 REMOVE_CRIO() {
     RUN sudo apt-get remove -y cri-o cri-o-runc podman buildah
+    RUN sudo apt autoremove -y
+
     [ -d /var/run/crio ] && RUN sudo rm -rf /var/run/crio
+    sudo rm -rf /etc/apt/sources.list.d/devel:*libcontainers*
 }
 
 REMOVE_DOCKER() {
