@@ -1,7 +1,13 @@
 #!/bin/bash
 
+# Quick launch options:
+# -CP: hard-reset cluster (deletes cluster, removes packages)
+#      followed by install_packages and kubeadm init
+# -WO: hard-reset cluster (deletes cluster, removes packages)
+#      followed by install_packages
+#
 # Quick control node: no prompts
-#   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
+#   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages)
 #   $0 -r -ANP # soft-reset cluster (deletes cluster)
 #   $0 -I -ANP # -I: install_packages and kubeadm init
 
@@ -1048,6 +1054,12 @@ while [ ! -z "$1" ]; do
         +x)   set +x;;
 
        -set-nodename) shift; FORCE_NODENAME=$1;;
+
+       -CP)   NODE="control"; ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+              ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
+
+       -WO)   NODE="worker";  ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+              ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
        -ANP) ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
