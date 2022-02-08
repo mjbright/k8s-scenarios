@@ -76,6 +76,11 @@ NODE_ROLE="control"
 NODE_NUM=""
 INSTALL_MODE="GENERAL"
 
+#case $(hostname) in
+    #*-[1-9]*) NODE="worker"; NODE_ROLE="worker";;
+    #*) ;;
+#esac
+
 # START: SET_INSTALL DEFAULTS: ----------------------------------
 
 . /etc/os-release
@@ -141,9 +146,9 @@ SET_INSTALL_MODE() {
 }
 
 NODE_ROLE="control"
-case $0 in
-    *-w*) NODE="worker"; NODE_ROLE="worker" ;;
-esac
+#case $0 in
+#    *-w*) NODE="worker"; NODE_ROLE="worker" ;;
+#esac
 
 SET_INSTALL_MODE $INSTALL_MODE
 
@@ -1109,10 +1114,12 @@ while [ ! -z "$1" ]; do
 
        -set-nodename) shift; FORCE_NODENAME=$1;;
 
-       -CP)   NODE="control"; ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+        # TODO: Fix to work with multiple control nodes:
+       -CP)   NODE_ROLE="control"; ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
               ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
-       -WO)   NODE="worker";  ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+        # TODO: Fix to work with multiple workers:
+       -WO)   NODE=worker; NODE_ROLE="worker";  ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
               ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
        -ANP) ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
@@ -1177,6 +1184,8 @@ case $NODE in
     *) die "Unknown node option '$NODE'";;
 esac
 
+echo "SET_NODENAME=$SET_NODENAME"
+#die "OK"
 DEFAULT="n"
 [ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
 YESNO "About to install Kubernetes $K8S_REL on this $NODE_ROLE node - OK" "$DEFAULT" || exit 1
