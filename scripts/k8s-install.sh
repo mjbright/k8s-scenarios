@@ -3,12 +3,12 @@
 # Quick control node: no prompts
 #   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
 #   $0 -r -ANP # soft-reset cluster (deletes cluster)
-#   $0 -I -ANP
+#   $0 -I -ANP # -I: install_packages and kubeadm init
 
 # Quick worker node: no prompts (still need join afterwards):
 #   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
 #   $0 -r -ANP # soft-reset cluster (deletes cluster)
-#   $0 -i -ANP
+#   $0 -i -ANP # -i: install_packages
 
 # This script downloadable from:
 #     https://github.com/mjbright/k8s-scenarios/blob/master/scripts/k8s-install.sh
@@ -73,10 +73,14 @@ INSTALL_MODE="GENERAL"
 
 ## . /etc/os-release
 # Fix the versions to use
+
 export OS=xUbuntu_18.04 # Override true OS version
 LFS_K8S_VERSION="1.21.1-00"
 LFD_K8S_VERSION="1.22.1-00"
-K8S_VERSION="1.22.0-00"
+
+#K8S_VERSION="1.22.0-00"
+K8S_VERSION="1.23.3-00"
+
 LFS_K8S_REL=${LFS_K8S_VERSION%-00}
 LFD_K8S_REL=${LFD_K8S_VERSION%-00}
 K8S_REL=${K8S_VERSION%-00}
