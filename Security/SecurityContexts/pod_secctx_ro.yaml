@@ -1,0 +1,57 @@
+# To use this manifest:
+# - First view available securityContext fields
+#   ~/src/k8s-scenarios/scripts/k8s-explain.py pod.spec | grep -vE "initContainers|ephemeralContainer" | grep -i securityContext
+#
+# - Then view this manifest
+#
+# - kubectl create -f pod_secctx_ro.yaml
+#
+#
+# - kubectl exec -it secctx-ro -- sh
+#   # ls -al /mnt/vol
+#   # id
+#   # touch /tmp/X   # Note that we can no longer write to container filesystem
+#   # exit
+#
+# - ls -al /mnt/data # Note file ownership on the host node
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: secctx-ro
+  name:  secctx-ro
+spec:
+
+  # We will bind the Pod to our only control-plane node,
+  # - to simplify the demo (run totally from cp node)
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+
+  securityContext:
+    runAsUser:  1000
+    runAsGroup: 3000
+    fsGroup:    2000
+
+  containers:
+  - image: mjbright/k8s-demo:alpine1
+    name:  secctx-ro
+
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem:   true
+
+    # Append the current date to a file on the mounted volume
+    command: ["/bin/sh", "-c", "while true; do date >> /mnt/vol/pod_ro_date.log; sleep 1; done"]
+
+    volumeMounts:
+    - name:      secctx-vol
+      mountPath: /mnt/vol
+      readOnly:  false
+
+  volumes:
+  - name: secctx-vol
+    #emptyDir: {}
+    hostPath:
+      path: /mnt/data
+

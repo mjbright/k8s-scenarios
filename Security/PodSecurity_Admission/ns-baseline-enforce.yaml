@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: baseline
+  labels:
+    pod-security.kubernetes.io/enforce-version: v1.23
+    pod-security.kubernetes.io/audit-version:   v1.23
+    pod-security.kubernetes.io/warn-version:    v1.23
+
+    # Standard profiles are defined:
+    # Privileged: Unrestricted policy          - provides widest possible level of permissions, allows for known privilege escalations.
+    # Baseline:   Minimally restrictive policy - prevents known privilege escalations, allows default (minimally specified) Pod configuration.
+    # Restricted: Heavily restricted policy    - following current Pod hardening best practices.
+
+    # We are setting these to our _desired_ `enforce` level.
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn:  restricted
+
+    # Note: baseline forbids mounting of hostPath volume:
+    pod-security.kubernetes.io/enforce: baseline
+
