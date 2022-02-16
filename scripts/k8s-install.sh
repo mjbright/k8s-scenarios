@@ -1,14 +1,20 @@
 #!/bin/bash
 
+# Quick launch options:
+# -CP: hard-reset cluster (deletes cluster, removes packages)
+#      followed by install_packages and kubeadm init
+# -WO: hard-reset cluster (deletes cluster, removes packages)
+#      followed by install_packages
+#
 # Quick control node: no prompts
-#   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
+#   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages)
 #   $0 -r -ANP # soft-reset cluster (deletes cluster)
-#   $0 -I -ANP
+#   $0 -I -ANP # -I: install_packages and kubeadm init
 
 # Quick worker node: no prompts (still need join afterwards):
 #   $0 -R -ANP # hard-reset cluster (deletes cluster, removes packages
 #   $0 -r -ANP # soft-reset cluster (deletes cluster)
-#   $0 -i -ANP
+#   $0 -i -ANP # -i: install_packages
 
 # This script downloadable from:
 #     https://github.com/mjbright/k8s-scenarios/blob/master/scripts/k8s-install.sh
@@ -30,7 +36,8 @@ die() {
 }
 
 CLEANUP_DOCKER_CRIO() {
-    sudo apt-get remove -y docker.io containerd cri-tools
+    RUN sudo apt-get remove -y docker.io containerd cri-tools
+    RUN sudo apt autoremove -y
 
     # check for running processes
     #   dpkg -l | grep -iE "docker|container|cri"
@@ -69,18 +76,40 @@ NODE_ROLE="control"
 NODE_NUM=""
 INSTALL_MODE="GENERAL"
 
+#case $(hostname) in
+    #*-[1-9]*) NODE="worker"; NODE_ROLE="worker";;
+    #*) ;;
+#esac
+
 # START: SET_INSTALL DEFAULTS: ----------------------------------
 
-## . /etc/os-release
+. /etc/os-release
 # Fix the versions to use
-export OS=xUbuntu_18.04 # Override true OS version
+#export OS=xUbuntu_18.04 # Override true OS version
+
+case $VERSION_ID in
+    18.04) export OS=xUbuntu_18.04;;
+    20.03) export OS=xUbuntu_20.04;;
+    *)
+        set | grep -i ubuntu
+        die "Failed to get Ubuntu version '$VERSION_ID'"
+        ;;
+esac
+
 LFS_K8S_VERSION="1.21.1-00"
 LFD_K8S_VERSION="1.22.1-00"
-K8S_VERSION="1.22.0-00"
+
+#K8S_VERSION="1.22.0-00"
+K8S_VERSION="1.22.6-00"
+#K8S_VERSION="1.23.3-00"
+
 LFS_K8S_REL=${LFS_K8S_VERSION%-00}
 LFD_K8S_REL=${LFD_K8S_VERSION%-00}
 K8S_REL=${K8S_VERSION%-00}
 #K8S_MIN_VERSION=${K8S_REL%.*}
+
+# TEMPORARY WORKAROUND FOR https://github.com/cri-o/cri-o/issues/3844:
+# FORCE_CRIO_MIN_VERSION="1.22"
 
 SET_INSTALL_MODE() {
     INSTALL_MODE=$1; shift
@@ -89,30 +118,37 @@ SET_INSTALL_MODE() {
     *LFS458*|*lfs458*)
       K8S_VERSION=$LFS_K8S_VERSION; K8S_REL=$LFS_K8S_REL;
       K8S_MIN_VERSION=${K8S_REL%.*} # e.g. 1.21.1 => 1.21
+      CRIO_MIN_VERSION=$K8S_MIN_VERSION
       [ $NODE = "control" ] && NODE="k8scp"
       INSTALL_MODE="LFS458"
       ;;
     *LFD459*|*lfd459*)
       K8S_VERSION=$LFD_K8S_VERSION; K8S_REL=$LFD_K8S_REL;
       K8S_MIN_VERSION=${K8S_REL%.*}
+      CRIO_MIN_VERSION=$K8S_MIN_VERSION
       [ $NODE = "control" ] && NODE="k8scp"
       INSTALL_MODE="LFD459"
       ;;
     *)
       K8S_MIN_VERSION=${K8S_REL%.*}
+      CRIO_MIN_VERSION=$K8S_MIN_VERSION
       ;;
     esac
+
+    [ ! -z "$FORCE_CRIO_MIN_VERSION" ] && CRIO_MIN_VERSION=$FORCE_CRIO_MIN_VERSION
+
     echo "INSTALL_MODE=$INSTALL_MODE NODE=$NODE[$NODE_ROLE]"
     echo "K8S_REL=$K8S_REL K8S_VERSION[apt]=$K8S_VERSION"
+    echo "CRIO_MIN_VERSION=$CRIO_MIN_VERSION"
       #die "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
 
     [ -z "$K8S_MIN_VERSION" ] && die "[MODE=$INSTALL_MODE] K8S_MIN_VERSION is unset"
 }
 
 NODE_ROLE="control"
-case $0 in
-    *-w*) NODE="worker"; NODE_ROLE="worker" ;;
-esac
+#case $0 in
+#    *-w*) NODE="worker"; NODE_ROLE="worker" ;;
+#esac
 
 SET_INSTALL_MODE $INSTALL_MODE
 
@@ -553,7 +589,10 @@ HARD_RESET_NODE() {
 
 REMOVE_CRIO() {
     RUN sudo apt-get remove -y cri-o cri-o-runc podman buildah
+    RUN sudo apt autoremove -y
+
     [ -d /var/run/crio ] && RUN sudo rm -rf /var/run/crio
+    sudo rm -rf /etc/apt/sources.list.d/devel:*libcontainers*
 }
 
 REMOVE_DOCKER() {
@@ -614,7 +653,7 @@ USAGE() {
 INSTALL_PKGS() {
     GET_NODE_INFO
     #echo "Installing Kubernetes release $K8S_REL"
-    DEMO_HEADER "INSTALL_PKGS:"  "Add Docker & Kubernetes[$K8S_REL] package repositories & install packages"
+    DEMO_HEADER "INSTALL_PKGS:"  "Add Container engine & Kubernetes[$K8S_REL] package repositories & install packages"
 
     CLEANUP_DOCKER_CRIO
     [ -f /etc/apt/sources.list.d/cri-0.list ] &&
@@ -757,8 +796,8 @@ EOF
 CHECK_DOCKER_STARTED() {
     sudo systemctl status docker | grep failed && {
         STEP_HEADER "INSTALL_DOCKER:"  "Re-starting Docker after failure"
-        sleep 2
         RUN sudo systemctl start docker
+        sleep 2
     }
 
     sudo systemctl status docker | grep failed && {
@@ -766,6 +805,51 @@ CHECK_DOCKER_STARTED() {
     }
 
     echo "Docker is running OK"
+}
+
+CHECK_CRIO_STARTED() {
+    sudo systemctl status crio | grep failed && {
+        STEP_HEADER "INSTALL_CRIO:"  "Re-starting CRI-O after failure"
+        RUN sudo systemctl start crio
+        sleep 2
+    }
+
+    #sudo systemctl status crio | grep failed && {
+    sudo systemctl status crio | grep "Active: active" || {
+        die "CRI-O install failed - try restarting using 'sudo systemctl start crio'"
+    }
+
+    ls -al /run/crio/crio.sock
+    [ ! -S /run/crio/crio.sock ] && die "No CRI-O socket at /run/crio/crio.sock"
+
+    echo "CRI-O is running OK"
+}
+
+# TAKEN FROM: https://computingforgeeks.com/install-cri-o-container-runtime-on-ubuntu-linux/:
+INSTALL_CRIO_ON_UBUNTU() {
+    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /"|
+        sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+    echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_MIN_VERSION/$OS/ /"|
+        sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:$CRIO_MIN_VERSION.list
+
+    # Once the repository is added to your system, import GPG key:
+    curl -L https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$CRIO_MIN_VERSION/$OS/Release.key |
+        sudo apt-key add -
+    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key |
+        sudo apt-key add -
+
+    #sudo apt -qq update
+    RUN sudo apt-get update
+
+    # Install CRI-O
+    #RUN sudo apt-get install -y cri-o=$CRIO_MIN_VERSION cri-o-runc=$CRIO_MIN_VERSION podman buildah
+    RUN sudo apt-get install -y cri-o cri-o-runc podman buildah
+
+    systemctl status crio
+    sudo systemctl daemon-reload
+    sudo systemctl restart crio
+    systemctl status crio
+    ls -al /var/run/crio/crio.sock
 }
 
 INSTALL_CRIO() {
@@ -795,31 +879,14 @@ EOF
     grep "^$IP " /etc/hosts ||
         echo $(hostname -i) ${NODE_N}${NODE_NUM} | sudo tee -a /etc/hosts
 
-    # Add repo
+    # Install CRI-O:
+    case $VERSION_ID in
+        18.04) OS=xUbuntu_18.04;;
+        20.04) OS=xUbuntu_20.04;;
+        *) die "Failed to get Ubuntu version '$VERSION_ID'";;
+    esac
 
-    set -x
-    APT_FILE=/etc/apt/sources.list.d/cri-0.list
-    REPO_1="deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$K8S_MIN_VERSION/$OS/ /"
-    grep "$REPO_1" $APT_FILE ||
-        echo $REPO_1 | sudo tee -a $APT_FILE
-
-    # K8S_MIN_VERSION=${K8S_REL%.*}
-    RELEASE_KEY_URL=http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$K8S_MIN_VERSION/$OS/Release.key
-    curl -L $RELEASE_KEY_URL | sudo apt-key add -
-      echo "RELEASE_KEY_URL='$RELEASE_KEY_URL'"
-      echo "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
-      #die "K8S_MIN_VERSION='$K8S_MIN_VERSION'"
-
-    REPO_2="deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /"
-    APT_FILE2=/etc/apt/sources.list.d/libcontainers.list
-    grep "$REPO_2" $APT_FILE2 ||
-        echo $REPO_2 | sudo tee -a $APT_FILE2
-    set +x
-    #sudo apt -qq update
-    RUN sudo apt-get update
-
-    # Install CRI-O
-    RUN sudo apt-get install -y cri-o cri-o-runc podman buildah
+    INSTALL_CRIO_ON_UBUNTU
 
     # Fix if needed for https://github.com/containers/podman/issues/9363
     sudo sed -i 's/,metacopy=on//g' /etc/containers/storage.conf
@@ -829,11 +896,8 @@ EOF
     sleep 5
     RUN sudo systemctl start  crio
     RUN sudo systemctl enable crio
-    RUN sudo systemctl status crio | grep failed && {
-        die "Docker install failed - try restarting using 'sudo systemctl start docker'"
-    }
 
-    echo "CRI-O is running OK"
+    CHECK_CRIO_STARTED
 }
 
 INSTALL_CONTAINERD() {
@@ -936,7 +1000,12 @@ KUBEADM_INIT() {
     #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
     RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
 
-    RUN sudo kubeadm config view | sudo tee /root/kubeadm-config.yaml
+
+    #RUN sudo kubeadm config view | sudo tee /root/kubeadm-config.yaml
+    echo "kubectl get configmap -n kube-system kubeadm-config -o yaml | sudo tee /root/kubeadm-config.yaml"
+    sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap -n kube-system kubeadm-config -o yaml |&
+        sudo tee /root/kubeadm-config.yaml
+
     # Extract join command:
     grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
@@ -1045,6 +1114,14 @@ while [ ! -z "$1" ]; do
 
        -set-nodename) shift; FORCE_NODENAME=$1;;
 
+        # TODO: Fix to work with multiple control nodes:
+       -CP)   NODE_ROLE="control"; ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+              ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
+
+        # TODO: Fix to work with multiple workers:
+       -WO)   NODE=worker; NODE_ROLE="worker";  ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+              ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
+
        -ANP) ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
        -anp|-NP) ALL_PROMPTS=0;;
@@ -1089,6 +1166,12 @@ done
 
 ## Main: ------------------------------------------------------
 
+[ ! -z "$FORCE_CRIO_MIN_VERSION" ] && {
+    echo -e "${CYAN}NOTE: Forcing CRI-O version to '$FORCE_CRIO_MIN_VERSION'${NORMAL}"; echo
+}
+
+#die "CRIO_MIN_VERSION=$CRIO_MIN_VERSION"
+
 USERID=$(id -u)
 [ $USERID -eq 0 ] && die "Run this script as non-root user (but with sudo capabilities)"
 
@@ -1101,6 +1184,8 @@ case $NODE in
     *) die "Unknown node option '$NODE'";;
 esac
 
+echo "SET_NODENAME=$SET_NODENAME"
+#die "OK"
 DEFAULT="n"
 [ $ALL_PROMPTS -eq 0 ] && DEFAULT="y"
 YESNO "About to install Kubernetes $K8S_REL on this $NODE_ROLE node - OK" "$DEFAULT" || exit 1
