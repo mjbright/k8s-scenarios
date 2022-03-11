@@ -17,5 +17,3 @@ spec:
     # We need some non-default command else will fail to listen on port 80
     command: ['/bin/sleep', '3600']
 
-  dnsPolicy: ClusterFirst
-  restartPolicy: Always
