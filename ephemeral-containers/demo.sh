@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: read https://loft.sh/blog/using-kubernetes-ephemeral-containers-for-troubleshooting/
+
 cd $(dirname $0)
 . ../demos.rc
 
@@ -28,12 +30,12 @@ DEPLOY_IMAGE="mjbright/ckad-demo:1"
 DEPLOY=$APP_NAME
 TARGET_CONTAINER_NAME=$APP_NAME
 
-#ALL_NODES="master"
-#ALL_NODES=$( echo $( kubectl get nodes --no-headers -o custom-columns=.NAME:.metadata.name ) )
 MASTER_NODES=$( echo $( kubectl get nodes --no-headers -o custom-columns=.NAME:.metadata.name -l 'node-role.kubernetes.io/control-plane' ) )
 WORKER_NODES=$( echo $( kubectl get nodes --no-headers -o custom-columns=.NAME:.metadata.name -l '!node-role.kubernetes.io/control-plane' ) )
 ALL_NODES="$MASTER_NODES $WORKER_NODES"
 OTHER_NODES=${ALL_NODES#master }
+OTHER_NODES=${OTHER_NODES#cp }
+OTHER_NODES=${OTHER_NODES#control }
 
 echo "MASTER_NODES='$MASTER_NODES'"
 echo "WORKER_NODES='$WORKER_NODES'"
@@ -341,10 +343,12 @@ SECTION1 "'Ephemeral containers' demo script"
 ERRORS=""
 #[ $CHECK_OTHER_NODES -ne 0 ] && for OTHER_NODE in $OTHER_NODES; do \
 [ $CHECK_OTHER_NODES -ne 0 ] && for OTHER_NODE in $ALL_NODES; do \
-    echo "Checking ssh connectivity 'master->$OTHER_NODE'"; ssh $OTHER_NODE uptime || ERRORS+="Cannot connect to $OTHER_NODE from master\n"; done ; \
+    echo "Checking ssh connectivity '-->$OTHER_NODE'"; ssh $OTHER_NODE uptime || ERRORS+="Cannot connect to $OTHER_NODE\n"; done ; \
         [ ! -z "$ERRORS" ] && die "ssh connectivity errors:\n$ERRORS"
 
-STEP0_CONFIG_CHECK
+# Not needed on Kube 1.23+:
+# STEP0_CONFIG_CHECK
+
 STEP1_DEPLOY_PROBLEM_CASE
 STEP2_EXTRACT_A_POD
 STEP3_EPHEMERAL_CONTAINER
