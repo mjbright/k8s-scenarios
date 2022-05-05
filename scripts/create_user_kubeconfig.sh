@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Based on https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+# Based on https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/#normal-user
 #
 # Creates a new user/kubeconfig - does not create/bind any roles to user
 #
