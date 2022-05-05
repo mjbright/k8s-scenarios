@@ -5,8 +5,8 @@
 # Creates a new user/kubeconfig - does not create/bind any roles to user
 #
 # Example usage:
-#   $0 user1
-#   $0 user2
+#   $0 user1 [<op-file>]
+#   $0 user2 [<op-file>]
 #
 
 mkdir -p ~/tmp/kubeconfig.user$$
@@ -102,10 +102,19 @@ users:
     client-key-data: $CLIENT_KEY_DATA
 EOF
 
-    ls -al $PWD/kubeconfig.${USER_NAME}
+    #ls -al $PWD/kubeconfig.${USER_NAME}
+    if [ -z "$OP_FILE" ]; then
+        OP_FILE=$PWD/kubeconfig.${USER_NAME}
+    else
+        cp -a $PWD/kubeconfig.${USER_NAME} $OP_FILE
+    fi
+
+    ls -al $OP_FILE
 }
 
 NEW_USER=$1
+OP_FILE=""
+[ ! -z "$2" ] && OP_FILE=$2
 
 DESTROY $NEW_USER
 
