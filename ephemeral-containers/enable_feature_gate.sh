@@ -3,6 +3,16 @@
 cd $(dirname $0)
 . ../demos.rc
 
+die() { echo -e "$0: die - $*" >&2; exit 1; }
+
+KUBE_MINOR_VERSION=$( kubectl version -o json | jq -r '.serverVersion.gitVersion' | sed -e 's/^v1.//' -e 's/\..*//' )
+
+case $KUBE_MINOR_VERSION in
+    2[3-9]) die "No need to enable EphemeralContainers feature gate for your Kubernetes version [with beta feature]";;
+esac
+
+exit
+
 FLAGS_ENV_FILE=/var/lib/kubelet/kubeadm-flags.env
 FEATURE_FLAG="--feature-gates=EphemeralContainers=true"
 
@@ -29,7 +39,6 @@ CHECK_OTHER_NODES=1
 
 ## - Functions: -------------------------------------------------------
 
-die() { echo -e "$0: die - $*" >&2; exit 1; }
 
 CHECK_NODE() {
     ROLE=$1; shift

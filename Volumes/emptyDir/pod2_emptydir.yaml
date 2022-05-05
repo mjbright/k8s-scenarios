@@ -13,6 +13,7 @@ spec:
 
   - image: mjbright/ckad-demo:alpine1
     name: pv-demo
+
     volumeMounts:
     - mountPath: /m1
       name: ed
@@ -20,10 +21,9 @@ spec:
   - image: mjbright/ckad-demo:alpine1
     name: pv-demo2
     command: ['/bin/sh', '-c', 'while true; do echo $(hostname): $(date) >> /m2/date.log; sleep 1; done']
+
     volumeMounts:
     - mountPath: /m2
       name: ed
 
-  dnsPolicy: ClusterFirst
-  restartPolicy: Always
 
