@@ -5,15 +5,30 @@
 CRIO_PKGS="cri-o cri-o-runc podman buildah"
 KUBE_PKGS="kubeadm kubectl kubelet"
 
-# READ OLD functions:
-source ${0}.fn
+# Temporary removal of podman due to upstream conflicts:
+#APT_INSTALL_PODMAN=1
+APT_INSTALL_PODMAN=0
+[ $APT_INSTALL_PODMAN -eq 0 ] && {
+    CRIO_PKGS="cri-o cri-o-runc buildah"
+    PODMAN_VERSION="v3.4.2"
+}
+
+echo $CRIO_PKGS
+#exit
+
+SHOW_CALLER=1
+#SHOW_CALLER=0
 
 CONTAINER_ENGINE="CRIO"
 
 FORCE_NODENAME=1
 
-K8S_VERSION=1.23.6-00
-CRIO_VERSION=1.23
+# NOTE: For cri-o installation follow instructions at:
+#       https://github.com/cri-o/cri-o/blob/main/install.md#apt-based-operating-systems
+
+#K8S_VERSION=1.23.4-00
+K8S_VERSION=1.24.0-00
+CRIO_VERSION=1.24
 
 PV_RATE=40
 
@@ -69,14 +84,36 @@ REMOVE_PKGS() {
     [ -d /etc/cni/ ]      && RUN sudo rm -rf /etc/cni/
     [ -d /var/run/crio/ ] && RUN sudo rm -rf /var/run/crio/
 
-    [ -f /etc/sysctl.d/kubernetes.conf ] &&
-        RUN sudo rm /etc/sysctl.d/kubernetes.conf
-    [ -f /etc/apt/sources.list.d/crio.list ] &&
-        RUN sudo rm /etc/apt/sources.list.d/crio.list
-    [ -f /etc/apt/sources.list.d/kubernetes.list ] &&
-        RUN sudo rm /etc/apt/sources.list.d/kubernetes.list
-    [ -f /etc/apt/sources.list.d/libcontainers.list ] &&
-        RUN sudo rm /etc/apt/sources.list.d/libcontainers.list
+    #[ -f /etc/sysctl.d/kubernetes.conf ] &&
+        #RUN sudo rm /etc/sysctl.d/kubernetes.conf
+    #[ -f /etc/apt/sources.list.d/crio.list ] &&
+        #RUN sudo rm /etc/apt/sources.list.d/crio.list
+    #[ -f /etc/apt/sources.list.d/kubernetes.list ] &&
+        #RUN sudo rm /etc/apt/sources.list.d/kubernetes.list
+    #[ -f /etc/apt/sources.list.d/libcontainers.list ] &&
+        #RUN sudo rm /etc/apt/sources.list.d/libcontainers.list
+    for __FILE in \
+        /etc/sysctl.d/kubernetes.conf \
+        /etc/apt/sources.list.d/backports.list \
+        /etc/apt/sources.list.d/crio.list \
+        /etc/apt/sources.list.d/kubernetes.list \
+        /etc/apt/sources.list.d/libcontainers.list \
+        /etc/apt/sources.list.d/.Release.key \
+        \
+    ; do
+        [ -f $__FILE ] && RUN sudo rm $__FILE
+    done
+
+    #ls -altr /etc/apt/sources.list.d/
+    #RUN sudo rm -f /etc/apt/sources.list.d/devel:kubic:libcontainers:*
+    #ls -altr /etc/apt/sources.list.d/
+    #sudo rm -f /etc/apt/sources.list.d/devel:kubic:libcontainers:*
+    #ls -altr /etc/apt/sources.list.d/
+    #RUN sudo rm -f /etc/apt/sources.list.d/devel\:kubic\:libcontainers:*
+    #ls -altr /etc/apt/sources.list.d/
+    #sudo rm -f /etc/apt/sources.list.d/devel\:kubic\:libcontainers:*
+    sudo rm -f /etc/apt/sources.list.d/devel*
+    ls -altr /etc/apt/sources.list.d/
 
     RUN sudo apt autoremove -y
 }
@@ -155,21 +192,111 @@ SET_OS() {
 }
 
 SET_REPOS() {
-    #Add repos and keys   
-    echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
-        sudo tee -a /etc/apt/sources.list.d/crio.list
 
-    curl -sL http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
-        sudo apt-key add -
+    # New with 1.24: libseccomp2 for cri-o-runc (part1)
+    ## __FILE=/etc/apt/sources.list.d/backports.list
+    ## echo 'deb http://deb.debian.org/debian buster-backports main' |
+        ## sudo tee $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
 
-    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
-        sudo tee -a /etc/apt/sources.list.d/libcontainers.list
+    ## RUN sudo apt-get update -qq ||
+        ## RUN sudo apt-get update || die "apt-get update had errors"
 
+    __FILE=/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+    echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
+        RUN sudo tee $__FILE
+    [ ! -s $__FILE ] && die "File $__FILE is empty"
+    [ ! -f $__FILE ] && die "File $__FILE is missing"
+
+    __FILE=/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:$CRIO_VERSION.list
+    echo "deb [signed-by=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
+        RUN sudo tee $__FILE
+    [ ! -s $__FILE ] && die "File $__FILE is empty"
+    [ ! -f $__FILE ] && die "File $__FILE is missing"
+
+
+    ## #Add repos and keys   
+    ## __FILE=/etc/apt/sources.list.d/crio.list
+    ## #echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
+    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
+    ##     RUN sudo tee $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+
+    ## __FILE=/etc/apt/sources.list.d/.Release.key
+    ## curl -sL http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
+    ##     RUN sudo tee $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+        #sudo apt-key add -
+    ## RUN sudo apt-key add /etc/apt/sources.list.d/.Release.key
+
+    ## __FILE=/etc/apt/sources.list.d/libcontainers.list
+    ## #echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
+    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
+    ##     RUN sudo tee $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+
+    # RUN sudo apt-get update -qq ||
+        # RUN sudo apt-get update || die "apt-get update had errors"
+
+    # New with 1.24: libseccomp2 for cri-o-runc (part2)
+    #apt update
+    ## RUN sudo apt install -y -t buster-backports libseccomp2
+    ## ## RUN sudo apt update -y -t buster-backports libseccomp2
+
+    # New with 1.24: cri-o
+    ## __FILE=/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
+    ##     RUN sudo tee $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+
+    ## __FILE="/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:${CRIO_VERSION}.list"
+    ## RUN sudo ls -al "$__FILE"
+    ## RUN sudo rm "$__FILE"
+    ## RUN sudo ls -al "$__FILE"
+    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
+    ##     RUN sudo tee "$__FILE"
+    ## [ ! -s "$__FILE" ] && die "File $__FILE is empty"
+    ## [ ! -f "$__FILE" ] && die "File $__FILE is missing"
+
+    RUN sudo mkdir -p /usr/share/keyrings
+
+    __FILE=/usr/share/keyrings/libcontainers-archive-keyring.gpg
+    [ -f $__FILE ] && sudo rm $__FILE
+    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key |
+        RUN sudo gpg --dearmor -o $__FILE
+    __FILE=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg
+
+    [ -f $__FILE ] && sudo rm $__FILE
+    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
+        RUN sudo gpg --dearmor -o $__FILE
+
+    ## mkdir -p /usr/share/keyrings
+    ## __FILE=/usr/share/keyrings/libcontainers-archive-keyring.gpg
+    ## [ -f $__FILE ] && sudo rm $__FILE
+    ## curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key |
+        ## RUN sudo gpg --dearmor -o $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+
+    ## __FILE=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg
+    ## [ -f $__FILE ] && sudo rm $__FILE
+    ## curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
+    ##     RUN sudo gpg --dearmor -o $__FILE
+    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
+    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+    
     RUN sudo apt-get update -qq
 }
 
 INSTALL_CRIO() {
-    RUN sudo apt-get install -qq -y $CRIO_PKGS
+    RUN sudo apt-get install -qq -y $CRIO_PKGS ||
+        die "Failed to install cri-o packages"
+    #RUN apt-get install cri-o cri-o-runc
     sleep 3
 
     sudo sed -i 's/,metacopy=on//g' /etc/containers/storage.conf
@@ -227,7 +354,11 @@ KUBEADM_INIT() {
     sleep 3
 
     RUN kubectl get node
-    RUN kubectl taint node cp node-role.kubernetes.io/master-
+    kubectl describe node cp | grep Taint | grep /control-plane &&
+        RUN kubectl taint node cp node-role.kubernetes.io/control-plane-
+    sleep 3
+    kubectl describe node cp | grep Taint | grep /master &&
+        RUN kubectl taint node cp node-role.kubernetes.io/master-
 }
 
 INSTALL_HELM() {
@@ -297,6 +428,9 @@ HAPPY_SAILING_TEST() {
 
 ## -- Args: ----------------------------------------------------------
 
+# READ OLD functions:
+source ${0}.fn
+
 HOST="cp"
 ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0
 
@@ -307,6 +441,7 @@ while [ ! -z "$1" ]; do
         -x)   set -x;;
         +x)   set +x;;
 
+       -trace) SHOW_CALLER=1;;
        -set-nodename) shift; FORCE_NODENAME=$1;;
 
         # TODO: Fix to work with multiple control nodes:
@@ -361,6 +496,18 @@ SET_OS
 SET_REPOS
 INSTALL_CRIO
 INSTALL_KUBE
+
+[ $APT_INSTALL_PODMAN -eq 0 ] && {
+    cd ~/tmp
+    PODMAN_URL=https://github.com/mgoltzsche/podman-static/releases/download/$PODMAN_VERSION/podman-linux-amd64.tar.gz
+    RUN wget $PODMAN_URL
+    RUN tar xf podman-linux-amd64.tar.gz
+
+    RUN sudo cp -a podman-linux-amd64/usr/local/bin/podman /usr/local/bin
+    RUN which podman    # Should see /usr/local/bin/podman
+    RUN podman version  # Should see version 3.4.2
+    cd -
+}
 
 if [ "$HOST" != "worker" ]; then
     KUBEADM_INIT;

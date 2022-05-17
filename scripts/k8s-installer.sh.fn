@@ -138,7 +138,9 @@ RUN() {
     [ "$1" = "-np" ] && { shift; PROMPTS=0; }
 
     echo;
-    YELLOW "-- $*" | PV; echo
+    CALLER=""
+    [ "$SHOW_CALLER" = "1" ] && CALLER="[$( caller 1 )]"
+    YELLOW "--${CALLER} $*" | PV; echo
     READ_OPTIONS
     [ $? -ne 0 ] && return
 
@@ -615,128 +617,6 @@ CHECK_CRIO_STARTED() {
     [ ! -S /run/crio/crio.sock ] && die "No CRI-O socket at /run/crio/crio.sock"
 
     echo "CRI-O is running OK"
-}
-
-# TAKEN FROM: https://computingforgeeks.com/install-cri-o-container-runtime-on-ubuntu-linux/:
-INSTALL_CRIO_ON_UBUNTU() {
-    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /"|
-        sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-    echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_MIN_VERSION/$OS/ /"|
-        sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:$CRIO_MIN_VERSION.list
-
-    # Once the repository is added to your system, import GPG key:
-    curl -L https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:$CRIO_MIN_VERSION/$OS/Release.key |
-        sudo apt-key add -
-    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key |
-        sudo apt-key add -
-
-    #sudo apt -qq update
-    RUN sudo apt-get update
-
-    # Install CRI-O
-    #RUN sudo apt-get install -y cri-o=$CRIO_MIN_VERSION cri-o-runc=$CRIO_MIN_VERSION podman buildah
-    RUN sudo apt-get install -y cri-o cri-o-runc podman buildah
-
-    systemctl status crio
-    sudo systemctl daemon-reload
-    sudo systemctl restart crio
-    systemctl status crio
-    ls -al /var/run/crio/crio.sock
-}
-
-INSTALL_CRIO() {
-    STEP_HEADER "INSTALL_CRIO:"  "..."
-    # Ensure you load modules
-    sudo modprobe overlay
-    sudo modprobe br_netfilter
-
-    # Set up required sysctl params
-    sudo tee /etc/sysctl.d/kubernetes.conf<<EOF
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-net.ipv4.ip_forward = 1
-EOF
-
-    # Reload sysctl
-    sudo sysctl --system
-
-    NODE_N="control"
-    case $NODE_ROLE in
-        control) NODE_N="control";;
-        *)       NODE_N="worker";;
-    esac
-
-    # TODO: make sure we get the correct IPv4 address:
-    IP=$(hostname -i)
-    grep "^$IP " /etc/hosts ||
-        echo $(hostname -i) ${NODE_N}${NODE_NUM} | sudo tee -a /etc/hosts
-
-    # Install CRI-O:
-    case $VERSION_ID in
-        18.04) OS=xUbuntu_18.04;;
-        20.04) OS=xUbuntu_20.04;;
-        *) die "Failed to get Ubuntu version '$VERSION_ID'";;
-    esac
-
-    INSTALL_CRIO_ON_UBUNTU
-
-    # Fix if needed for https://github.com/containers/podman/issues/9363
-    sudo sed -i 's/,metacopy=on//g' /etc/containers/storage.conf
-
-    STEP_HEADER "INSTALL_CRIO:"  "Start & enable Services"
-    RUN sudo systemctl daemon-reload
-    sleep 5
-    RUN sudo systemctl start  crio
-    RUN sudo systemctl enable crio
-
-    CHECK_CRIO_STARTED
-}
-
-INSTALL_CONTAINERD() {
-    die "TODO"
-
-    STEP_HEADER "INSTALL_CONTAINERD:"  "..."
-    # Configure persistent loading of modules
-    sudo tee /etc/modules-load.d/containerd.conf <<EOF
-overlay
-br_netfilter
-EOF
-
-    # Load at runtime
-    sudo modprobe overlay
-    sudo modprobe br_netfilter
-
-    # Ensure sysctl params are set
-    sudo tee /etc/sysctl.d/kubernetes.conf<<EOF
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-net.ipv4.ip_forward = 1
-EOF
-
-    # Reload configs
-    sudo sysctl --system
-
-    # Install required packages
-    sudo apt install -y curl gnupg2 software-properties-common apt-transport-https ca-certificates
-
-
-    # Add Docker repo
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
-    # Install containerd
-    sudo apt -qq update
-    sudo apt install -y containerd.io
-
-    # Configure containerd and start service
-    sudo mkdir -p /etc/containerd
-    sudo su -
-    containerd config default  /etc/containerd/config.toml
-
-    # restart containerd
-    STEP_HEADER "INSTALL_CONTAINERD:"  "Start & enable Services"
-    RUN sudo systemctl restart containerd
-    RUN sudo systemctl enable containerd
 }
 
 INSTALL_PKGS_INIT() {
