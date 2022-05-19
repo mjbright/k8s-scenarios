@@ -25,7 +25,7 @@ mkdir -p $TMP
 #     1         $KUBECTL create --filename=- --record=true
 # in rollout history
 #
-# SOLUTION: manually inset the change-cause annotation:
+# SOLUTION: manually insert the change-cause annotation:
 #    $KUBECTL create deploy $APP_NAME --image mjbright/k8s-demo:2 --dry-run=client -o yaml | sed 's/^  labels:/\ \ annotations:\n\ \ \ \ kubernetes.io\/change-cause: WHY-NOT\n\ \ labels:/' > t.yaml
 
 
@@ -124,7 +124,8 @@ Start k1s.py in namespace 'demo'
 case $STRATEGY in
     ROLLING)
         #RUN_PRESS $KUBECTL create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1 --record
-        CMD="$KUBECTL create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1"
+        #CMD="$KUBECTL create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1"
+        CMD="$KUBECTL create -f deploy-web.yaml"
         NORUN_PRESS "---- $CMD"
         $CMD --dry-run=client -o yaml |
             sed 's/^  labels:/\ \ annotations:\n\ \ \ \ kubernetes.io\/change-cause: CHANGE_CAUSE\n\ \ labels:/' |

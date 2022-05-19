@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+  annotations:
+    kubernetes.io/change-cause: "kubectl create deploy web --image mjbright/k8s-demo:alpine1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - image: mjbright/k8s-demo:alpine1
+        name: k8s-demo
+        livenessProbe:
+          httpGet:
+            host: 127.0.0.1
+            port: 80
+            path: /1
+
