@@ -31,7 +31,13 @@ LOOP_CONNECT_FROM_LOCAL_NODE() {
 
 FROM_POD() {
     set -x
-    $KUBECTL run testpod --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
+   
+    $KUBECTL describe pod testpod 2>&1 | grep Image: | grep " alpine$"
+    if [ $? -eq 0 ]; then
+        $KUBECTL exec -it testpod -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
+    else
+        $KUBECTL run testpod --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
+    fi
 }
 
 ON_CLUSTER_NODE_P() {
