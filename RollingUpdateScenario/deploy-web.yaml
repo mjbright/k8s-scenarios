@@ -19,9 +19,9 @@ spec:
       containers:
       - image: mjbright/k8s-demo:alpine1
         name: k8s-demo
-        livenessProbe:
-          httpGet:
-            host: 127.0.0.1
-            port: 80
-            path: /1
+        #livenessProbe:
+        #  httpGet:
+        #    host: 127.0.0.1
+        #    port: 80
+        #    path: /1
 
