@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment
+  labels:
+    app: test-deploy
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: test-deploy
+
+  template:
+    metadata:
+      labels:
+        app: test-deploy
+    spec:
+
+      containers:
+        - name: test-deploy
+          image: mjbright/k8s-demo:alpine1
+          ports:
+            - containerPort: 80
+          command: ['/bin/sh', '-c', 'while true; do echo $(hostname): $(date) >> /mnt/deploy-date.log; sleep 1; done']
+          volumeMounts:
+          - mountPath: /mnt
+            name: pvc-vol
+
+      volumes:
+      - name: pvc-vol
+        persistentVolumeClaim:
+          claimName: test-deploy-claim

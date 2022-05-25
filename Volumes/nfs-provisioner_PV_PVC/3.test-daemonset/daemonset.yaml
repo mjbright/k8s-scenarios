@@ -1,0 +1,32 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: test-daemonset
+  labels:
+    app: test-dset
+spec:
+  selector:
+    matchLabels:
+      app: test-dset
+
+  template:
+    metadata:
+      labels:
+        app: test-dset
+    spec:
+
+      containers:
+        - name: test-dset
+          image: mjbright/k8s-demo:alpine1
+          ports:
+            - containerPort: 80
+          command: ['/bin/sh', '-c', 'while true; do echo $(hostname): $(date) >> /mnt/dset-date.log; sleep 1; done']
+          volumeMounts:
+          - mountPath: /mnt
+            name: pvc-vol
+
+      volumes:
+      - name: pvc-vol
+        persistentVolumeClaim:
+          claimName: test-daemonset-claim

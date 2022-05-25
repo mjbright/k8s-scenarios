@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: test-sset # has to match .spec.template.metadata.labels
+  serviceName: 'test-sset'
+
+  replicas: 3
+
+  template:
+    metadata:
+      labels:
+        app: test-sset # has to match .spec.selector.matchLabels
+
+    spec:
+      #terminationGracePeriodSeconds: 10
+      containers:
+        - name: test-sset
+          image: mjbright/k8s-demo:alpine2
+          ports:
+            - containerPort: 80
+              name: sset-port
+
+          command: ['/bin/sh', '-c', 'while true; do echo $(hostname): $(date) >> /mnt/sset-date.log; sleep 1; done']
+
+          volumeMounts:
+            - name: pvc-sset
+              mountPath: /mnt
+
+  volumeClaimTemplates:
+    - metadata:
+        name: pvc-sset
+      spec:
+        accessModes:
+          - ReadWriteMany
+        storageClassName: 'managed-nfs-storage'
+        resources:
+          requests:
+            storage: 1Mi
+
+  #annotations:
+    #volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+
