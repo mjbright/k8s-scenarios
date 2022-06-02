@@ -9,6 +9,6 @@ spec:
   - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   nfs:
-    path: /opt/sfw
+    path: /mnt/nfs-vol
     server: k8scp
     readOnly: false
