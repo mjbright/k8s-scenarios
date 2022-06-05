@@ -394,20 +394,29 @@ HAPPY_SAILING_TEST() {
        die "Failed to curl to Pod at url $SVC_IP/1"
 
    curl -sL $SVC_IP
+   kubectl get svc ${TEST}
+   kubectl get pods -l app=${TEST} -o wide
 
-   [ "$KEEP" != "KEEP" ] && {
-       echo "Cleaning up ${TEST} deployment & service:"
+   if [ "$KEEP" = "KEEP" ]; then
+       #echo; echo "=================== KEEPing ====================="
+       ABS_NO_PROMPTS=0 ALL_PROMPTS=1 PROMPTS=1 PRESS ""
+   else
+       #echo; echo "------------------- CLEANing ---------------------"
+       echo; echo "Cleaning up ${TEST} deployment & service:"
        kubectl delete svc/${TEST} deploy/${TEST}
 
        WORKER_NODE=$( grep -m 3 kube /etc/hosts | tail -1 | awk '{ print $2; }' )
        [ -z "$WORKER_NODE" ] && WORKER_NODE=worker
 
        echo
-       CYAN "Remember to join the 2nd node"; echo
-       CYAN "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"; echo
-       CYAN "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"; echo
-       CYAN "- kubectl get nodes"; echo
-   }
+       if [ `kubectl get no | wc -l` = "2" ]; then
+           CYAN "Remember to join the 2nd node"; echo
+           CYAN "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"; echo
+           CYAN "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"; echo
+           CYAN "- kubectl get nodes"; echo
+           sleep 1
+       fi
+   fi
 
    echo
    STEP_HEADER "All done on the control node:"  "Happy sailing ..."
