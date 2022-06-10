@@ -2,6 +2,9 @@
 
 . ../demos.rc
 
+REPLICAS=10
+REPLICAS=8
+
 #APP_NAME=ckad-demo
 #APP_CONTAINER=ckad-demo
 #IMAGE_BASE=mjbright/ckad-demo
@@ -161,7 +164,7 @@ esac
 RUN_PRESS $KUBECTL expose $DEPLOY  --port 80
 $KUBECTL get all | grep $APP_NAME
 
-RUN_PRESS $KUBECTL scale $DEPLOY --replicas=10
+RUN_PRESS $KUBECTL scale $DEPLOY --replicas=$REPLICAS
 
 echo
 echo "NOTE: remember pause/resume during rollout"
