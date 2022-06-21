@@ -30,8 +30,25 @@ WAIT_ON_METRICS() {
     while ! kubectl top pod -A; do sleep 5; done
 }
 
+TEST_METRICS() {
+    set -x
+    kubectl get --raw "/apis/metrics.k8s.io/v1beta1/nodes" | jq '.items[].metadata.name'
+    kubectl top node
+    kubectl top pod
+    set +x
+    #kubectl get --raw "/apis/metrics.k8s.io/v1beta1/pods" | jq '.items[].metadata.name'
+    #kubectl get --raw "/apis/metrics.k8s.io/v1beta1/namespaces/default/pods" | jq '.items[].metadata.name'
+}
+
+
 kubectl get ns $NS || kubectl create ns $NS
 
+if [ "$1" = "-t" ]; then
+    TEST_METRICS
+    exit $?
+fi
+
+INSTALL
 if [ "$1" = "-d" ]; then
     UNINSTALL
     exit $?
@@ -39,11 +56,5 @@ fi
 
 INSTALL
 WAIT_ON_METRICS
-
-set -x
-kubectl get --raw "/apis/metrics.k8s.io/v1beta1/nodes" | jq '.items[].metadata.name'
-set +x
-#kubectl get --raw "/apis/metrics.k8s.io/v1beta1/pods" | jq '.items[].metadata.name'
-#kubectl get --raw "/apis/metrics.k8s.io/v1beta1/namespaces/default/pods" | jq '.items[].metadata.name'
-
+TEST_METRICS
 
