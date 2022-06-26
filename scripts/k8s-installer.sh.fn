@@ -716,8 +716,8 @@ KUBEADM_INIT() {
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
         echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-        #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
-        #RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
+        #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op'
+        #RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op"
         #RUN 'sudo kubeadm init |& tee kubeadm.init.op'
         RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee kubeadm.init.op"
         #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
@@ -732,7 +732,8 @@ KUBEADM_INIT() {
         sudo tee /root/kubeadm-config.yaml
 
     # Extract join command:
-    grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
+    grep -A1 -m1 "kubeadm join" kubeadm.init.op |
+        sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
     STEP_HEADER "KUBEADM_INIT:"  "Showing installed node"
     RUN sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get nodes
