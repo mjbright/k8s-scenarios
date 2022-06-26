@@ -8,6 +8,10 @@ KUBEADM_CONFIG=""
 
 SCRIPT_VERSION_INFO=""
 
+# LoadBalancer args to set via -lb option
+#  -lb "<lb-dns>:<lb-ip>"
+LB_ARGS=""
+
 # Temporary removal of podman due to upstream conflicts:
 APT_INSTALL_BUILDAH=0
 APT_INSTALL_PODMAN=0
@@ -39,7 +43,7 @@ FORCE_NODENAME=1
 
 #K8S_VERSION=1.23.4-00
 #K8S_VERSION=1.24.0-00
-K8S_VERSION=1.24.1-00
+K8S_VERSION=1.24.2-00
 CRIO_VERSION=1.24
 
 PV_RATE=40
@@ -469,6 +473,7 @@ nodeRegistration:
 EOF
            ;;
 
+       -lb) LB_ARGS="--control-plane-endpoint $2"; shift;;
        -trace) SHOW_CALLER=1;;
        -set-nodename) shift; FORCE_NODENAME=$1;;
 

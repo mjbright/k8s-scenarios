@@ -663,49 +663,6 @@ EOF
 }
 
 
-OLD_KUBEADM_INIT() {
-    #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
-    if [ -z "$KUBEADM_CONFIG" ]; then
-        RUN 'sudo kubeadm init |& tee kubeadm.init.op'
-        sudo kubeadm init
-        #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
-    else
-        RUN "sudo kubeadm init --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
-    fi
-
-    grep -A 1 "kubeadm join" kubeadm.init.op |
-        sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
-
-    sudo systemctl status kubelet | grep '(running)' || sleep 5
-    sudo systemctl status kubelet | grep '(running)' ||
-        die "kubelet not active"
-
-    sleep 5
-
-    mkdir -p $HOME/.kube
-    sleep 2
-
-    [ -f $HOME/.kube/config ] &&
-        RUN sudo mv $HOME/.kube/config $HOME/.kube/config.bak
-    RUN sudo cp -a /etc/kubernetes/admin.conf $HOME/.kube/config
-    sleep 2
-
-    RUN sudo chown student:student $HOME/.kube/config
-
-    RUN kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-    echo
-    sleep 3
-
-    RUN kubectl get node
-    kubectl describe node cp | grep Taint | grep /control-plane &&
-        RUN kubectl taint node cp node-role.kubernetes.io/control-plane-
-    #XXX
-     #kubectl taint node cp node-role.kubernetes.io/control-plane-
-    sleep 3
-    kubectl describe node cp | grep Taint | grep /master &&
-        RUN kubectl taint node cp node-role.kubernetes.io/master-
-}
-
 KUBEADM_INIT() {
     STEP_HEADER "KUBEADM_INIT:"  "Use the kubeadm installer to initialize the cluster 1st node (Control)"
 
@@ -716,14 +673,14 @@ KUBEADM_INIT() {
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
         echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-        #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op'
-        #RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op"
-        #RUN 'sudo kubeadm init |& tee kubeadm.init.op'
-        RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee kubeadm.init.op"
-        #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
+        #RUN sudo 'kubeadm init $LB_ARGS --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op'
+        #RUN sudo "kubeadm init $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op"
+        #RUN 'sudo kubeadm init $LB_ARGS |& tee kubeadm.init.op'
+        RUN sudo "kubeadm init $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee kubeadm.init.op"
+        #sudo kubeadm init $LB_ARGS --config=$(find / -name kubeadm.yaml 2>/dev/null )
     else
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
-        RUN "sudo kubeadm init --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
+        RUN "sudo kubeadm init $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
     fi
 
     #RUN sudo kubeadm config view | sudo tee /root/kubeadm-config.yaml
