@@ -385,13 +385,15 @@ HAPPY_SAILING_TEST() {
    }
 
    echo; echo "Checking curl to first '${TEST}' Pod:"
-   curl -sL $IP/1 | grep ^container ||
-       die "Failed to curl to Pod at url $IP/1"
+   CMD="curl -sL $IP/1"
+   $CMD | grep "pod .*@$IP" ||
+       die "Failed to curl to Pod at url $IP/1   [$CMD]"
 
    SVC_IP=$( kubectl get svc ${TEST} --no-headers | awk '{ print $3; }' )
    echo; echo "Checking curl to '${TEST}' Service:"
-   curl -sL $SVC_IP/1 | grep ^container ||
-       die "Failed to curl to Pod at url $SVC_IP/1"
+   CMD="curl -sL $SVC_IP/1"
+   $CMD | grep "pod .*@" ||
+       die "Failed to curl to Pod at url $SVC_IP/1    [$CMD]"
 
    curl -sL $SVC_IP
    kubectl get svc ${TEST}
