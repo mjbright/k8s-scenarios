@@ -4,16 +4,27 @@
 #KUBE_PKGS="kubeadm kubectl kubelet kubernetes-cni"
 CRIO_PKGS="cri-o cri-o-runc podman buildah"
 KUBE_PKGS="kubeadm kubectl kubelet"
+KUBEADM_CONFIG=""
+
+SCRIPT_VERSION_INFO=""
 
 # Temporary removal of podman due to upstream conflicts:
-#APT_INSTALL_PODMAN=1
+APT_INSTALL_BUILDAH=0
 APT_INSTALL_PODMAN=0
+#APT_INSTALL_PODMAN=1
+#APT_INSTALL_BUILDAH=1
 [ $APT_INSTALL_PODMAN -eq 0 ] && {
-    CRIO_PKGS="cri-o cri-o-runc buildah"
+    SCRIPT_VERSION_INFO+="\nManual installation of Podman"
+    CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *podman *//g' )
+    #CRIO_PKGS="cri-o cri-o-runc buildah"
     PODMAN_VERSION="v3.4.2"
 }
+[ $APT_INSTALL_PODMAN -eq 0 ] && {
+    SCRIPT_VERSION_INFO+="\nManual installation of Buildah"
+    CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *buildah *//g' )
+}
 
-echo $CRIO_PKGS
+echo "[APT_INSTALL_PODMAN=$APT_INSTALL_PODMAN APT_INSTALL_BUILDAH=$APT_INSTALL_BUILDAH] CRIO_PKGS='$CRIO_PKGS'"
 #exit
 
 SHOW_CALLER=1
@@ -27,12 +38,22 @@ FORCE_NODENAME=1
 #       https://github.com/cri-o/cri-o/blob/main/install.md#apt-based-operating-systems
 
 #K8S_VERSION=1.23.4-00
-K8S_VERSION=1.24.0-00
+#K8S_VERSION=1.24.0-00
+K8S_VERSION=1.24.1-00
 CRIO_VERSION=1.24
 
 PV_RATE=40
 
 mkdir -p ~/tmp/
+
+LOGFILE=~/tmp/$(basename $0).log
+
+echo; echo "-- Installing k8s $K8S_VERSION & CRI-O $CRIO_VERISON, logging to $LOGFILE"
+echo -e "-- $SCRIPT_VERSION_INFO"
+#exec &> >(tee -a "$LOGFILE")
+exec &> >(tee "$LOGFILE")
+
+
 
 ## -- Funcs: ---------------------------------------------------------
 
@@ -305,7 +326,7 @@ INSTALL_CRIO() {
     RUN sudo systemctl daemon-reload
     RUN sudo systemctl enable crio
     RUN sudo systemctl start crio
-    RUN 'sudo systemctl status crio | cat'
+    RUN sudo systemctl status crio
 
     sudo systemctl status cri-o | grep '(running)' || sleep 5
     sudo systemctl status cri-o | grep '(running)' ||
@@ -325,40 +346,6 @@ INSTALL_KUBE() {
     RUN sudo apt-mark unhold kubeadm kubelet kubectl
     RUN sudo apt-get install -qq -y kubeadm=${K8S_VERSION} kubelet=${K8S_VERSION} kubectl=${K8S_VERSION}
     RUN sudo apt-mark hold kubeadm kubelet kubectl
-}
-
-KUBEADM_INIT() {
-    #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
-    RUN 'sudo kubeadm init |& tee kubeadm.init.op'
-    grep -A 1 "kubeadm join" kubeadm.init.op |
-        sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
-
-    sudo systemctl status kubelet | grep '(running)' || sleep 5
-    sudo systemctl status kubelet | grep '(running)' ||
-        die "kubelet not active"
-
-    sleep 5
-
-    mkdir -p $HOME/.kube
-    sleep 2
-
-    [ -f $HOME/.kube/config ] &&
-        RUN sudo mv $HOME/.kube/config $HOME/.kube/config.bak
-    RUN sudo cp -a /etc/kubernetes/admin.conf $HOME/.kube/config
-    sleep 2
-
-    RUN sudo chown student:student $HOME/.kube/config
-
-    RUN kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
-    echo
-    sleep 3
-
-    RUN kubectl get node
-    kubectl describe node cp | grep Taint | grep /control-plane &&
-        RUN kubectl taint node cp node-role.kubernetes.io/control-plane-
-    sleep 3
-    kubectl describe node cp | grep Taint | grep /master &&
-        RUN kubectl taint node cp node-role.kubernetes.io/master-
 }
 
 INSTALL_HELM() {
@@ -407,20 +394,29 @@ HAPPY_SAILING_TEST() {
        die "Failed to curl to Pod at url $SVC_IP/1"
 
    curl -sL $SVC_IP
+   kubectl get svc ${TEST}
+   kubectl get pods -l app=${TEST} -o wide
 
-   [ "$KEEP" != "KEEP" ] && {
-       echo "Cleaning up ${TEST} deployment & service:"
+   if [ "$KEEP" = "KEEP" ]; then
+       #echo; echo "=================== KEEPing ====================="
+       ABS_NO_PROMPTS=0 ALL_PROMPTS=1 PROMPTS=1 PRESS ""
+   else
+       #echo; echo "------------------- CLEANing ---------------------"
+       echo; echo "Cleaning up ${TEST} deployment & service:"
        kubectl delete svc/${TEST} deploy/${TEST}
 
        WORKER_NODE=$( grep -m 3 kube /etc/hosts | tail -1 | awk '{ print $2; }' )
        [ -z "$WORKER_NODE" ] && WORKER_NODE=worker
 
        echo
-       CYAN "Remember to join the 2nd node"; echo
-       CYAN "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"; echo
-       CYAN "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"; echo
-       CYAN "- kubectl get nodes"; echo
-   }
+       if [ `kubectl get no | wc -l` = "2" ]; then
+           CYAN "Remember to join the 2nd node"; echo
+           CYAN "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"; echo
+           CYAN "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"; echo
+           CYAN "- kubectl get nodes"; echo
+           sleep 1
+       fi
+   fi
 
    echo
    STEP_HEADER "All done on the control node:"  "Happy sailing ..."
@@ -432,6 +428,7 @@ HAPPY_SAILING_TEST() {
 source ${0}.fn
 
 HOST="cp"
+ROLE="cp"
 ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0
 
 INSTALL_TOOLS
@@ -440,6 +437,35 @@ while [ ! -z "$1" ]; do
     case $1 in
         -x)   set -x;;
         +x)   set +x;;
+
+       -aws) FORCE_NODENAME=1; HOST=$( curl -L  http://169.254.169.254/2009-04-04/meta-data/local-hostname )
+          KUBEADM_CONFIG="/tmp/kubeadm_config.$$.yaml"
+          CLUSTER_NAME="trainer-aws"
+          cat > $KUBEADM_CONFIG <<EOF
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+apiServer:
+  extraArgs:
+    cloud-provider: external
+clusterName: $CLUSTER_NAME
+controllerManager:
+  extraArgs:
+    cloud-provider: external
+kubernetesVersion: stable
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 192.168.0.0/16
+  serviceSubnet: 10.96.0.0/12
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+nodeRegistration:
+  name: $HOST
+  kubeletExtraArgs:
+    cloud-provider: external
+EOF
+           ;;
 
        -trace) SHOW_CALLER=1;;
        -set-nodename) shift; FORCE_NODENAME=$1;;
@@ -460,6 +486,9 @@ while [ ! -z "$1" ]; do
        -np) PROMPTS=0;;
         -p) PROMPTS=1;;
 
+        -U) UNTAINT_CONTROL_NODE; exit $?;;
+        -C) INSTALL_CALICO; exit $?;;
+
        # -R)   ACTION="HARD_RESET_NODE";;
        # -r)   ACTION="SOFT_RESET_NODE";;
 
@@ -471,8 +500,8 @@ while [ ! -z "$1" ]; do
         -q)   PV_RATE=100;;
         -Q)   ACTION="QUICK_RESET_UNINSTALL_REINSTALL";;
 
-      -c) HOST="cp";;
-      -w) HOST="worker";;
+      -c) ROLE="cp";;
+      -w) ROLE="worker"; HOST="worker";;
 
       -init) KUBEADM_INIT; exit;;
       -helm) INSTALL_HELM; exit;;
@@ -509,79 +538,15 @@ INSTALL_KUBE
     cd -
 }
 
-if [ "$HOST" != "worker" ]; then
+if [ "$ROLE" != "worker" ]; then
     KUBEADM_INIT;
     INSTALL_HELM
+    UNTAINT_CONTROL_NODE
+    INSTALL_CALICO
+    echo
     HAPPY_SAILING_TEST "CLEAN"
+    #HAPPY_SAILING
 fi
 
 exit 0
 
-GET_NODE_INFO()
-READ_OPTIONS()
-SECTION1()
-SECTION2()
-PV()
-QRUN()
-RUN()
-RUN_PRESS()
-BLACK()
-WHITE()
-RED()
-GREEN()
-YELLOW()
-BLUE()
-MAGENTA()
-CYAN()
-B_BLACK()
-B_WHITE()
-B_RED()
-B_GREEN()
-B_YELLOW()
-B_BLUE()
-B_MAGENTA()
-B_CYAN()
-I_BLACK()
-I_WHITE()
-I_RED()
-I_GREEN()
-I_YELLOW()
-I_BLUE()
-I_MAGENTA()
-I_CYAN()
-NORMAL()
-HL_OLD()
-HL()
-HL1()
-DEMO_HEADER()
-STEP_HEADER()
-PRESS()
-ALWAYS_WARN_PROMPT()
-QPRESS()
-CPRESS()
-YESNO()
-COLOUR_ALL_STDIN()
-COLOUR_ALL_TEXT()
-COLOUR_STDIN()
-COLOUR_ARGS()
-INSTALL_TOOLS()
-KUBEADM_RESET()
-KUBE_REMOVE_DIRS()
-SOFT_RESET_NODE()
-HARD_RESET_NODE()
-REMOVE_CRIO()
-REMOVE_DOCKER()
-INSTALL_PKGS()
-INSTALL_BASE_PKGS()
-INSTALL_DOCKER()
-CHECK_DOCKER_STARTED()
-CHECK_CRIO_STARTED()
-INSTALL_CRIO_ON_UBUNTU()
-INSTALL_CRIO()
-INSTALL_CONTAINERD()
-INSTALL_PKGS_INIT()
-HAPPY_SAILING()
-KUBEADM_INIT()
-QUICK_RESET_UNINSTALL_REINSTALL()
-UNTAINT_CONTROL_NODE()
-CHOOSE_CIDR()

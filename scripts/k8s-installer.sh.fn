@@ -626,6 +626,8 @@ INSTALL_PKGS_INIT() {
 
     UNTAINT_CONTROL_NODE
 
+    INSTALL_CALICO
+
     echo
     HAPPY_SAILING
 }
@@ -660,18 +662,69 @@ EOF
     STEP_HEADER "All done on the control node:"  "Happy sailing ..."
 }
 
-KUBEADM_INIT() {
-    STEP_HEADER "INSTALL_INIT:"  "Use the kubeadm installer to initialize the cluster 1st node (Control)"
 
-    STEP_HEADER "INSTALL_INIT:"  "Pre-pulling container images"
+OLD_KUBEADM_INIT() {
+    #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
+    if [ -z "$KUBEADM_CONFIG" ]; then
+        RUN 'sudo kubeadm init |& tee kubeadm.init.op'
+        sudo kubeadm init
+        #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
+    else
+        RUN "sudo kubeadm init --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
+    fi
+
+    grep -A 1 "kubeadm join" kubeadm.init.op |
+        sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
+
+    sudo systemctl status kubelet | grep '(running)' || sleep 5
+    sudo systemctl status kubelet | grep '(running)' ||
+        die "kubelet not active"
+
+    sleep 5
+
+    mkdir -p $HOME/.kube
+    sleep 2
+
+    [ -f $HOME/.kube/config ] &&
+        RUN sudo mv $HOME/.kube/config $HOME/.kube/config.bak
+    RUN sudo cp -a /etc/kubernetes/admin.conf $HOME/.kube/config
+    sleep 2
+
+    RUN sudo chown student:student $HOME/.kube/config
+
+    RUN kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+    echo
+    sleep 3
+
+    RUN kubectl get node
+    kubectl describe node cp | grep Taint | grep /control-plane &&
+        RUN kubectl taint node cp node-role.kubernetes.io/control-plane-
+    #XXX
+     #kubectl taint node cp node-role.kubernetes.io/control-plane-
+    sleep 3
+    kubectl describe node cp | grep Taint | grep /master &&
+        RUN kubectl taint node cp node-role.kubernetes.io/master-
+}
+
+KUBEADM_INIT() {
+    STEP_HEADER "KUBEADM_INIT:"  "Use the kubeadm installer to initialize the cluster 1st node (Control)"
+
+    STEP_HEADER "KUBEADM_INIT:"  "Pre-pulling container images"
     RUN sudo kubeadm config images pull
 
-    STEP_HEADER "INSTALL_INIT:"  "Initialize the cluster"
-    echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
-    echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-    #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
-    RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
-
+    if [ -z "$KUBEADM_CONFIG" ]; then
+        STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
+        echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
+        echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
+        #RUN sudo 'kubeadm init --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out'
+        #RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/control.out"
+        #RUN 'sudo kubeadm init |& tee kubeadm.init.op'
+        RUN sudo "kubeadm init --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee kubeadm.init.op"
+        #sudo kubeadm init --config=$(find / -name kubeadm.yaml 2>/dev/null )
+    else
+        STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
+        RUN "sudo kubeadm init --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
+    fi
 
     #RUN sudo kubeadm config view | sudo tee /root/kubeadm-config.yaml
     echo "kubectl get configmap -n kube-system kubeadm-config -o yaml | sudo tee /root/kubeadm-config.yaml"
@@ -681,10 +734,10 @@ KUBEADM_INIT() {
     # Extract join command:
     grep -A 1 "kubeadm join" ~/tmp/control.out | sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
-    STEP_HEADER "INSTALL_INIT:"  "Showing installed node"
+    STEP_HEADER "KUBEADM_INIT:"  "Showing installed node"
     RUN sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get nodes
 
-    STEP_HEADER "INSTALL_INIT:"  "Creating 'kubeconfig' file for kubectl user as user '$USER'"
+    STEP_HEADER "KUBEADM_INIT:"  "Creating 'kubeconfig' file for kubectl user as user '$USER'"
     RUN mkdir -p $HOME/.kube
     [ -f $HOME/.kube/config ] && cp -a $HOME/.kube/config $HOME/.kube/config.bak
     #RUN sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
@@ -692,10 +745,12 @@ KUBEADM_INIT() {
     #RUN sudo chown $(id -u):$(id -g) $HOME/.kube/config
     RUN sudo chown -R $(id -u):$(id -g) $HOME/.kube/
 
-    STEP_HEADER "INSTALL_INIT:"  "Showing installed node - as user $USER"
+    STEP_HEADER "KUBEADM_INIT:"  "Showing installed node - as user $USER"
     RUN kubectl get nodes
+}
 
-    STEP_HEADER "INSTALL_INIT:"  "Install Calico networking plugin"
+INSTALL_CALICO() {
+    STEP_HEADER "INSTALL_CALICO:"  "Install Calico networking plugin"
     # Keep local copy of calico.yaml:
     RUN wget -O ~/calico.yaml https://docs.projectcalico.org/manifests/calico.yaml
     RUN kubectl apply -f ~/calico.yaml
@@ -703,13 +758,13 @@ KUBEADM_INIT() {
     # From: https://stackoverflow.com/questions/53198576/ansible-playbook-wait-until-all-pods-running
     
     ## Need to know Pod names but we don't know for calico-node-xxx ...
-    STEP_HEADER "INSTALL_INIT:"  "Waiting for Calico Pods to be 'Created'"
+    STEP_HEADER "INSTALL_CALICO:"  "Waiting for Calico Pods to be 'Created'"
     ## QRUN "kubectl get pods --namespace=kube-system --selector tier=control-plane --output=jsonpath='{.items[*].metadata.name}'"
     while ! kubectl get pods -n kube-system -o name | grep pod/calico-node ; do echo -n .; sleep 1; done
     while ! kubectl get pods -n kube-system -o name | grep pod/calico-kube ; do echo -n .; sleep 1; done
     echo
 
-    STEP_HEADER "INSTALL_INIT:"  "Waiting for all Pods to be 'Running' - may take 1-2 mins"
+    STEP_HEADER "INSTALL_CALICO:"  "Waiting for all Pods to be 'Running' - may take 1-2 mins"
     # QRUN kubectl wait --namespace=kube-system --for=condition=Ready pods --selector tier=control-plane --timeout=600s
     QRUN kubectl wait --namespace=kube-system --for=condition=Ready pods --all --timeout=600s
 
@@ -732,6 +787,21 @@ QUICK_RESET_UNINSTALL_REINSTALL() {
 }
 
 UNTAINT_CONTROL_NODE() {
+    RUN kubectl get node
+    #kubectl describe node cp | grep Taint | grep /control-plane &&
+        #RUN kubectl taint node cp node-role.kubernetes.io/control-plane-
+    kubectl describe node | grep Taint | grep /control-plane &&
+        RUN kubectl taint node --all node-role.kubernetes.io/control-plane-
+    #XXX
+     #kubectl taint node cp node-role.kubernetes.io/control-plane-
+    sleep 3
+    #kubectl describe node cp | grep Taint | grep /master &&
+        #RUN kubectl taint node cp node-role.kubernetes.io/master-
+    kubectl describe node | grep Taint | grep /master &&
+        RUN kubectl taint node --all node-role.kubernetes.io/master-
+
+    return
+
     TAINT="node-role.kubernetes.io/master:NoSchedule"
     SELECTOR="-l node-role.kubernetes.io/control-plane"
     TAINT_KEY=${TAINT%:*}
