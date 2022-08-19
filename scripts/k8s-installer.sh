@@ -12,9 +12,11 @@ SCRIPT_VERSION_INFO=""
 #  -lb "<lb-dns>:<lb-ip>"
 LB_ARGS=""
 
+ARCH=$( uname -p )
+
 # Temporary removal of podman due to upstream conflicts:
-APT_INSTALL_BUILDAH=0
-APT_INSTALL_PODMAN=0
+APT_INSTALL_BUILDAH=1
+APT_INSTALL_PODMAN=1
 #APT_INSTALL_PODMAN=1
 #APT_INSTALL_BUILDAH=1
 [ $APT_INSTALL_PODMAN -eq 0 ] && {
@@ -28,8 +30,27 @@ APT_INSTALL_PODMAN=0
     CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *buildah *//g' )
 }
 
+
 echo "[APT_INSTALL_PODMAN=$APT_INSTALL_PODMAN APT_INSTALL_BUILDAH=$APT_INSTALL_BUILDAH] CRIO_PKGS='$CRIO_PKGS'"
 #exit
+
+die() { echo "$0: die - $*" >&2; exit 1; }
+
+HELM_VERSION=3.9.3
+# In case of manual downloads (podman, helm):
+case $ARCH in
+    x86_64)
+       PODMAN_URL=https://github.com/mgoltzsche/podman-static/releases/download/$PODMAN_VERSION/podman-linux-amd64.tar.gz
+       HELM_URL=https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz
+       ;;
+    aarch64)
+       PODMAN_URL=https://github.com/mgoltzsche/podman-static/releases/download/$PODMAN_VERSION/podman-linux-arm64.tar.gz
+       HELM_URL=https://get.helm.sh/helm-v${HELM_VERSION}-linux-arm64.tar.gz
+       #https://github.com/helm/helm/releases/download/v3.9.3/helm-v3.9.3-darwin-arm64.tar.gz
+       ;;
+    *) die "Unknown architecture: $ARCH";;
+esac
+
 
 SHOW_CALLER=1
 #SHOW_CALLER=0
@@ -43,7 +64,7 @@ FORCE_NODENAME=1
 
 #K8S_VERSION=1.23.4-00
 #K8S_VERSION=1.24.0-00
-K8S_VERSION=1.24.2-00
+K8S_VERSION=1.24.4-00
 CRIO_VERSION=1.24
 
 PV_RATE=40
@@ -353,8 +374,7 @@ INSTALL_KUBE() {
 }
 
 INSTALL_HELM() {
-    HELM_VERSION=3.8.1
-    RUN wget -qO /tmp/helm.tgz https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz
+    RUN wget -qO /tmp/helm.tgz $HELM_URL
     tar xf /tmp/helm.tgz
 
     sudo mv linux-amd64/helm /usr/local/bin/
@@ -535,7 +555,6 @@ INSTALL_KUBE
 
 [ $APT_INSTALL_PODMAN -eq 0 ] && {
     cd ~/tmp
-    PODMAN_URL=https://github.com/mgoltzsche/podman-static/releases/download/$PODMAN_VERSION/podman-linux-amd64.tar.gz
     RUN wget $PODMAN_URL
     RUN tar xf podman-linux-amd64.tar.gz
 
