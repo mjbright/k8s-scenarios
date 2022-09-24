@@ -14,9 +14,9 @@ LB_ARGS=""
 
 ARCH=$( uname -p )
 
-# Temporary removal of podman due to upstream conflicts:
-APT_INSTALL_BUILDAH=1
-APT_INSTALL_PODMAN=1
+# Temporary removal of podman due to upstream conflicts: containernetwork-plugins and kubernetes-cni
+APT_INSTALL_BUILDAH=0
+APT_INSTALL_PODMAN=0
 #APT_INSTALL_PODMAN=1
 #APT_INSTALL_BUILDAH=1
 [ $APT_INSTALL_PODMAN -eq 0 ] && {
@@ -29,7 +29,6 @@ APT_INSTALL_PODMAN=1
     SCRIPT_VERSION_INFO+="\nManual installation of Buildah"
     CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *buildah *//g' )
 }
-
 
 echo "[APT_INSTALL_PODMAN=$APT_INSTALL_PODMAN APT_INSTALL_BUILDAH=$APT_INSTALL_BUILDAH] CRIO_PKGS='$CRIO_PKGS'"
 #exit
@@ -51,7 +50,6 @@ case $ARCH in
     *) die "Unknown architecture: $ARCH";;
 esac
 
-
 SHOW_CALLER=1
 #SHOW_CALLER=0
 
@@ -64,8 +62,10 @@ FORCE_NODENAME=1
 
 #K8S_VERSION=1.23.4-00
 #K8S_VERSION=1.24.0-00
-K8S_VERSION=1.24.4-00
-CRIO_VERSION=1.24
+#K8S_VERSION=1.24.4-00
+#CRIO_VERSION=1.24
+K8S_VERSION=1.25.2-00
+CRIO_VERSION=1.25
 
 PV_RATE=40
 
@@ -118,6 +118,13 @@ REMOVE_PKGS() {
     dpkg -l kubernetes-cni |& grep ^ii && die "Failed to remove kubernetes-cni"
     [ -d /opt/cni/bin ] && RUN sudo rm -rf /opt/cni/bin
 
+    dpkg -l containerd |& grep ^ii && {
+        RUN sudo systemctl disable containerd
+        RUN sudo systemctl stop containerd
+
+        RUN sudo apt-get remove -y containerd.io
+    }
+
     #dpkg -l | grep -q cri-o && {
     dpkg -l cri-o |& grep ^ii && {
         RUN sudo systemctl disable crio
@@ -162,22 +169,27 @@ REMOVE_PKGS() {
     ls -altr /etc/apt/sources.list.d/
 
     RUN sudo apt autoremove -y
+    RUN sudo apt-get --fix-broken install -y
 }
 
 APT_BASE() {
     RUN sudo apt-get update -qq &&
       RUN sudo apt-get upgrade -qq -y
-    RUN sudo apt-get install -qq -y vim nano libseccomp2
+    RUN sudo apt-get install -qq -y vim nano libseccomp2 curl wget
 }
 
 LINUX_CONFIG() {
     sudo modprobe overlay
     sudo modprobe br_netfilter
+    cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+overlay
+br_netfilter
+EOF
 
     sudo tee /etc/sysctl.d/kubernetes.conf<<EOF
+net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 net.ipv4.ip_forward = 1
-net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
     RUN sudo sysctl --system > ~/tmp/sysctl.op 2>&1
@@ -237,7 +249,7 @@ SET_OS() {
     export OS=xUbuntu_${VERSION_ID}
 }
 
-SET_REPOS() {
+SET_REPOS_CRIO() {
 
     # New with 1.24: libseccomp2 for cri-o-runc (part1)
     ## __FILE=/etc/apt/sources.list.d/backports.list
@@ -339,6 +351,38 @@ SET_REPOS() {
     RUN sudo apt-get update -qq
 }
 
+INSTALL_NERDCTL() {
+    wget -qO /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v0.23.0/nerdctl-0.23.0-linux-amd64.tar.gz
+    ls -al /tmp/nerdctl.tgz
+    tar tf /tmp/nerdctl.tgz
+    tar xf /tmp/nerdctl.tgz nerdctl
+    sudo mv nerdctl /usr/local/bin/
+    sudo chmod +x /usr/local/bin/nerdctl
+    ls -al /usr/local/bin/nerdctl
+    sudo /usr/local/bin/nerdctl version
+}
+
+INSTALL_CONTAINERD() {
+    # Some steps from: https://www.hostafrica.ng/blog/kubernetes/kubernetes-ubuntu-20-containerd/
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    RUN sudo add-apt-repository "'deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable'"
+
+    RUN sudo apt update -y
+    RUN sudo apt install -y containerd.io
+
+    #RUN sudo mkdir -p /etc/containerd
+    sudo mkdir -p /etc/containerd
+    sudo containerd config default | sudo tee /etc/containerd/config.toml
+
+    sudo sed -i.bak -e 's/SystemdCgroup.*/SystemdCgroup = true/' /etc/containerd/config.toml
+
+    #RUN sudo systemctl restart containerd
+    RUN sudo systemctl enable --now containerd
+
+    ps -ef | grep containerd
+    INSTALL_NERDCTL
+}
+
 INSTALL_CRIO() {
     RUN sudo apt-get install -qq -y $CRIO_PKGS ||
         die "Failed to install cri-o packages"
@@ -349,8 +393,8 @@ INSTALL_CRIO() {
     sleep 3
 
     RUN sudo systemctl daemon-reload
-    RUN sudo systemctl enable crio
-    RUN sudo systemctl start crio
+    RUN sudo systemctl enable --now crio
+    #RUN sudo systemctl start crio
     RUN sudo systemctl status crio
 
     sudo systemctl status cri-o | grep '(running)' || sleep 5
@@ -369,7 +413,15 @@ INSTALL_KUBE() {
     RUN sudo apt-get update -qq
 
     RUN sudo apt-mark unhold kubeadm kubelet kubectl
-    RUN sudo apt-get install -qq -y kubeadm=${K8S_VERSION} kubelet=${K8S_VERSION} kubectl=${K8S_VERSION}
+    RUN sudo apt-get install -qq -y --allow-downgrades kubeadm=${K8S_VERSION} kubelet=${K8S_VERSION} kubectl=${K8S_VERSION}
+    [ $? -ne 0 ] && {
+         dpkg -l | grep -E " (kubeadm|kubelet|kubectl) " | grep ^iU &&
+             die "Looks like kubeadm/kubelet/kubectl install failed"
+
+         [ -z `which kubectl` ] && die "Looks like kubeadm/kubelet/kubectl install failed - kubectl missing"
+         [ -z `which kubelet` ] && die "Looks like kubeadm/kubelet/kubectl install failed - kubelet missing"
+         [ -z `which kubeadm` ] && die "Looks like kubeadm/kubelet/kubectl install failed - kubeadm missing"
+    }
     RUN sudo apt-mark hold kubeadm kubelet kubectl
 }
 
@@ -549,8 +601,9 @@ APT_BASE
 LINUX_CONFIG
 SET_HOSTNAME $HOST
 SET_OS
-SET_REPOS
+SET_REPOS_CRIO
 INSTALL_CRIO
+#INSTALL_CONTAINERD
 INSTALL_KUBE
 
 [ $APT_INSTALL_PODMAN -eq 0 ] && {

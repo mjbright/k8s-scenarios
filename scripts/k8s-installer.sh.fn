@@ -707,6 +707,16 @@ KUBEADM_INIT() {
     RUN kubectl get nodes
 }
 
+INSTALL_FLANNEL() {
+    STEP_HEADER "INSTALL_FLANNERL:"  "Install Flannel networking plugin"
+
+    #kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+    RUN wget https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+    echo "Setting network CIDR range to 1902.168.0.0/16:"
+    sed -i.bak -e 's?^ *"Network":.*?      "Network": "192.168.0.0/16",?' kube-flannel.yml
+    RUN kubectl apply -f kube-flannel.yml
+}
+
 INSTALL_CALICO() {
     STEP_HEADER "INSTALL_CALICO:"  "Install Calico networking plugin"
     # Keep local copy of calico.yaml:
