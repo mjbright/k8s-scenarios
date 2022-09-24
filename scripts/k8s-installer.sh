@@ -6,6 +6,8 @@ CRIO_PKGS="cri-o cri-o-runc podman buildah"
 KUBE_PKGS="kubeadm kubectl kubelet"
 KUBEADM_CONFIG=""
 
+POD_CIDR="192.168.0.0/16"
+
 SCRIPT_VERSION_INFO=""
 
 # LoadBalancer args to set via -lb option
@@ -533,7 +535,7 @@ controllerManager:
 kubernetesVersion: stable
 networking:
   dnsDomain: cluster.local
-  podSubnet: 192.168.0.0/16
+  podSubnet: $POD_CIDR
   serviceSubnet: 10.96.0.0/12
 ---
 apiVersion: kubeadm.k8s.io/v1beta3

@@ -1,7 +1,5 @@
 #!/bin/bash
 
-POD_CIDR="192.168.0.0/16"
-
 PROMPTS=${PROMPTS:=1}
 ALL_PROMPTS=${ALL_PROMPTS:=1}
 ABS_NO_PROMPTS=0
@@ -673,11 +671,7 @@ KUBEADM_INIT() {
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
         echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-        #RUN sudo 'kubeadm init $LB_ARGS --pod-network-cidr=192.168.0.0/16 --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op'
-        #RUN sudo "kubeadm init $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee ~/tmp/kubeadm.init.op"
-        #RUN 'sudo kubeadm init $LB_ARGS |& tee kubeadm.init.op'
         RUN sudo "kubeadm init $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 | tee kubeadm.init.op"
-        #sudo kubeadm init $LB_ARGS --config=$(find / -name kubeadm.yaml 2>/dev/null )
     else
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
         RUN "sudo kubeadm init $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
@@ -713,7 +707,7 @@ INSTALL_FLANNEL() {
     #kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
     RUN wget https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
     echo "Setting network CIDR range to 1902.168.0.0/16:"
-    sed -i.bak -e 's?^ *"Network":.*?      "Network": "192.168.0.0/16",?' kube-flannel.yml
+    sed -i.bak -e 's?^ *"Network":.*?      "Network": "'$POD_CIDR'",?' kube-flannel.yml
     RUN kubectl apply -f kube-flannel.yml
 }
 
@@ -789,16 +783,17 @@ UNTAINT_CONTROL_NODE() {
     }
 }
 
-CHOOSE_CIDR() {
+UNUSED_CHOOSE_CIDR() {
     # Adapt POD_CIDR range:
     # - detect if management network is 192.168.0.x, if so choose 192.168.128.0/18 as Pod subnet
 
-    IP1=$( ip a|grep -A 4 ^2: | grep " inet " | sed -e 's/.* inet //' -e 's?/.*??' )
-    IP_PART=${IP1%.*}
-    [ "$IP_PART" = "192.168.0" ] && { POD_CIDR="192.168.128.0/18"; return; }
+    # IP1=$( ip a|grep -A 4 ^2: | grep " inet " | sed -e 's/.* inet //' -e 's?/.*??' )
+    # IP_PART=${IP1%.*}
+    # [ "$IP_PART" = "192.168.0" ] && { POD_CIDR="192.168.128.0/18"; return; }
 
-    IP2=$( hostname -i )
-    IP_PART=${IP2%.*}
-    [ "$IP_PART" = "192.168.0" ] && { POD_CIDR="192.168.128.0/18"; return; }
+    # IP2=$( hostname -i )
+    # IP_PART=${IP2%.*}
+    # [ "$IP_PART" = "192.168.0" ] && { POD_CIDR="192.168.128.0/18"; return; }
+    echo
 }
 
