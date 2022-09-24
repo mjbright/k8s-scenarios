@@ -7,6 +7,7 @@ KUBE_PKGS="kubeadm kubectl kubelet"
 KUBEADM_CONFIG=""
 
 POD_CIDR="192.168.0.0/16"
+CLUSTER_CIDR="10.96.0.0/12"
 
 SCRIPT_VERSION_INFO=""
 
@@ -536,7 +537,7 @@ kubernetesVersion: stable
 networking:
   dnsDomain: cluster.local
   podSubnet: $POD_CIDR
-  serviceSubnet: 10.96.0.0/12
+  serviceSubnet: $CLUSTER_CIDR
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: InitConfiguration
