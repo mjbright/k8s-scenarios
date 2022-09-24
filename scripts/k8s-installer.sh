@@ -427,10 +427,10 @@ INSTALL_KUBE() {
 
 INSTALL_HELM() {
     RUN wget -qO /tmp/helm.tgz $HELM_URL
-    tar xf /tmp/helm.tgz
+    RUN tar xf /tmp/helm.tgz
 
-    sudo mv linux-amd64/helm /usr/local/bin/
-    sudo rm -rf linux-amd64
+    RUN sudo mv linux-amd64/helm /usr/local/bin/
+    RUN sudo rm -rf linux-amd64
 
     RUN helm version
     echo
