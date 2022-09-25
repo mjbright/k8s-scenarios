@@ -783,6 +783,11 @@ UNTAINT_CONTROL_NODE() {
     }
 }
 
+PRELOAD_USER_IMAGES() {
+    [ -f /tmp/images/load_mjbright-k8s-demo.tar.sh ] && /tmp/images/load_mjbright-k8s-demo.tar.sh
+    [ -f /tmp/images/load_other-images.tar.sh      ] && /tmp/images/load_other-images.tar.sh
+}
+
 UNUSED_CHOOSE_CIDR() {
     # Adapt POD_CIDR range:
     # - detect if management network is 192.168.0.x, if so choose 192.168.128.0/18 as Pod subnet
