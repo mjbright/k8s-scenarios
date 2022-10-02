@@ -503,6 +503,17 @@ HAPPY_SAILING_TEST() {
    STEP_HEADER "All done on the control node:"  "Happy sailing ..."
 }
 
+INSTALL_PODMAN() {
+    cd ~/tmp
+    RUN wget $PODMAN_URL
+    RUN tar xf podman-linux-amd64.tar.gz
+
+    RUN sudo cp -a podman-linux-amd64/usr/local/bin/podman /usr/local/bin
+    RUN which  podman     # Should see /usr/local/bin/podman
+    RUN podman --version  # Should see version 3.4.2
+    cd -
+}
+
 ## -- Args: ----------------------------------------------------------
 
 # READ OLD functions:
@@ -608,18 +619,8 @@ SET_REPOS_CRIO
 INSTALL_CRIO
 #INSTALL_CONTAINERD
 INSTALL_KUBE
+[ $APT_INSTALL_PODMAN -eq 0 ] && INSTALL_PODMAN
 PRELOAD_USER_IMAGES
-
-[ $APT_INSTALL_PODMAN -eq 0 ] && {
-    cd ~/tmp
-    RUN wget $PODMAN_URL
-    RUN tar xf podman-linux-amd64.tar.gz
-
-    RUN sudo cp -a podman-linux-amd64/usr/local/bin/podman /usr/local/bin
-    RUN which podman    # Should see /usr/local/bin/podman
-    RUN podman --version  # Should see version 3.4.2
-    cd -
-}
 
 if [ "$ROLE" != "worker" ]; then
     KUBEADM_INIT;
