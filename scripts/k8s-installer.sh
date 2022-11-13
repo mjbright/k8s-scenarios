@@ -514,6 +514,8 @@ INSTALL_PODMAN() {
     RUN tar xf podman-linux-amd64.tar.gz
 
     RUN sudo cp -a podman-linux-amd64/usr/local/bin/podman /usr/local/bin
+    RUN sudo cp -a podman-linux-amd64/usr/local/lib/*      /usr/local/lib/
+
     RUN which  podman     # Should see /usr/local/bin/podman
     RUN podman --version  # Should see version 3.4.2
 
