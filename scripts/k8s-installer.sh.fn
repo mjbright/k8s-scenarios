@@ -30,6 +30,15 @@ PV_RATE=20
 
 ## Functions: -------------------------------------------------
 
+DISABLE_HOSTS_HOSTNAME_MGMT() {
+  # Assumes we're on Ubuntu !!
+  sudo grep manage_etc_hosts /etc/cloud/templates/hosts.debian.tmpl | grep -qi true &&
+      RUN sudo sed -i.bak 's/manage_etc_hosts:.*/manage_etc_hosts: False/' /etc/cloud/templates/hosts.debian.tmpl
+
+  sudo grep preserve_hostname /etc/cloud/cloud.cfg | grep -qi false &&
+      RUN sudo sed -i.bak 's/^preserve_hostname.*/preserve_hostname: true/' /etc/cloud/cloud.cfg
+}
+
 GET_NODE_INFO() {
     . /etc/lsb-release
     echo "OS: $DISTRIB_DESCRIPTION"
