@@ -33,10 +33,12 @@ PV_RATE=20
 DISABLE_HOSTS_HOSTNAME_MGMT() {
   # Assumes we're on Ubuntu !!
   sudo grep manage_etc_hosts /etc/cloud/templates/hosts.debian.tmpl | grep -qi true &&
-      RUN sudo sed -i.bak 's/manage_etc_hosts:.*/manage_etc_hosts: False/' /etc/cloud/templates/hosts.debian.tmpl
+      sudo sed -i.bak -e 's/manage_etc_hosts:.*/manage_etc_hosts: False/' /etc/cloud/templates/hosts.debian.tmpl
+      #RUN sudo sed -i.bak -e 's/manage_etc_hosts:.*/manage_etc_hosts: False/' /etc/cloud/templates/hosts.debian.tmpl
 
   sudo grep preserve_hostname /etc/cloud/cloud.cfg | grep -qi false &&
-      RUN sudo sed -i.bak 's/^preserve_hostname.*/preserve_hostname: true/' /etc/cloud/cloud.cfg
+      sudo sed -i.bak -e 's/^preserve_hostname.*/preserve_hostname: true/' /etc/cloud/cloud.cfg
+      #RUN sudo sed -i.bak -e 's/^preserve_hostname.*/preserve_hostname: true/' /etc/cloud/cloud.cfg
 }
 
 GET_NODE_INFO() {

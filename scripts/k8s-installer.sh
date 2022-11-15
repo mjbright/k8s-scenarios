@@ -582,6 +582,8 @@ nodeRegistration:
 EOF
            ;;
 
+       -no-mgmt) DISABLE_HOSTS_HOSTNAME_MGMT; exit $?;;
+
        -lb) LB_ARGS="--control-plane-endpoint $2"; shift;;
        -trace) SHOW_CALLER=1;;
        -set-nodename) shift; FORCE_NODENAME=$1;;
