@@ -42,9 +42,9 @@ frontend proxynode
 
 backend k8sServers
    balance roundrobin
-   server master1  REPLACE_MASTER1_PRIV_IP:6443 check
-#   server master2  REPLACE_MASTER2_PRIV_IP:6443 check
-#   server master3  REPLACE_MASTER3_PRIV_IP:6443 check
+   server k8scp  REPLACE_MASTER1_PRIV_IP:6443 check
+#   server cp2  REPLACE_MASTER2_PRIV_IP:6443 check
+#   server cp3  REPLACE_MASTER3_PRIV_IP:6443 check
 
 listen stats
      bind :32099
