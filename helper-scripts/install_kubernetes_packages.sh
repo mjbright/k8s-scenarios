@@ -52,6 +52,9 @@ UPDATE_HOSTNAME_HOSTS() {
         # Verify that preserve_hostname is set to false ...
         sudo sed -i.bak 's/preserve_hostname: .*/preserve_hostname: false/' $( sudo grep -rl preserve_hostname: /etc/ )
         #/etc/cloud/cloud.cfg:preserve_hostname: false
+
+        # Verify that manage_etc_hosts is set to false ...  in /etc/cloud/templates/hosts.debian.tmpl
+        sudo sed -i.bak 's/manage_etc_hosts: .*/manage_etc_hosts: False/' $( sudo grep -rl manage_etc_hosts: /etc/cloud/templates/ )
     }
 
     grep " $NODE_NAME" /etc/hosts || {
