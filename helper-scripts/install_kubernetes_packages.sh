@@ -11,6 +11,15 @@
 # Prior to Exercise 16 - HA Cluster
 # - on cp2    node: install_kubernetes_packages.sh cp2 -1.25.4
 # - on cp3    node: install_kubernetes_packages.sh cp3 -1.25.4
+#
+# To Join cp2, cp3 as control-plane nodes
+# - on cp:
+#     CERT_KEY=$( sudo kubeadm init phase upload-certs --upload-certs | grep -v upload-certs )
+#     JOIN_CMD=$( sudo kubeadm token create --print-join-command )
+#     JOIN_CMD="sudo $JOIN_CMD --control-plane --certificate-key $CERT_KEY"
+# - on cp2: $JOIN_CMD
+# - on cp3: $JOIN_CMD
+
 
 NODE_NAME=$1
 
