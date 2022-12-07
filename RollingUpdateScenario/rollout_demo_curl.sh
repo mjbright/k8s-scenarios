@@ -41,7 +41,7 @@ FROM_POD() {
         #$KUBECTL run testpod --dry-run=client -o yaml --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
         $KUBECTL run testpod --dry-run=client -o yaml --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
             sed -e 's/run: testpod/hide: k1spy/' | $KUBECTL apply -f -
-        $KUBECTL logs testpod -f
+        while true; do $KUBECTL logs testpod -f; sleep 2; done
     fi
 }
 
