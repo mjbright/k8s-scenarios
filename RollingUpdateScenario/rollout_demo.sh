@@ -17,7 +17,8 @@ DEPLOY=deploy/$APP_NAME
 SVC=svc/$APP_NAME
 
 KUBECTL="kubectl -n demo"
-kubectl get ns demo || kubectl create ns demo
+kubectl get ns demo || RUN kubectl create ns demo
+RUN kubectl rollout restart -n kube-system deployment coredns
 
 TMP=~/tmp/demos
 mkdir -p $TMP
@@ -43,22 +44,6 @@ PRESS() {
     [ "$_DUMMY" = "q" ] && exit 0
     [ "$_DUMMY" = "Q" ] && exit 0
 }
-
-#RUN() {
-#    CMD=$@
-#    echo; echo "-- CMD: $CMD"
-#    eval $CMD
-#}
-#
-#PAUSE_RUN() {
-#    CMD=$@
-#    echo; echo "-- CMD: $CMD"
-#    read _DUMMY
-#    [ "$_DUMMY" = "q" ] && exit 0
-#    [ "$_DUMMY" = "Q" ] && exit 0
-#
-#    eval $CMD
-#}
 
 CLEANUP() {
    $KUBECTL delete $DEPLOY
