@@ -6,6 +6,9 @@ CRIO_PKGS="cri-o cri-o-runc podman buildah"
 KUBE_PKGS="kubeadm kubectl kubelet"
 KUBEADM_CONFIG=""
 
+shopt -s expand_aliases
+alias apt-get='apt-get -o DPkg::Lock::Timeout=60'
+
 POD_CIDR="192.168.0.0/16"
 CLUSTER_CIDR="10.96.0.0/12"
 
