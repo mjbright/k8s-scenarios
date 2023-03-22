@@ -4,13 +4,13 @@
 #       make available to facilitate quick setup on nodes without scp access
 
 # For initial LFS458 installation:
-# - update INITIAL_RELEASE below (currently 1.24.1 for 1.25.1 training)
+# - update INITIAL_RELEASE below (currently 1.25.2 for 1.26.1 training)
 # - on cp     node: install_kubernetes_packages.sh cp
 # - on worker node: install_kubernetes_packages.sh worker
 #
 # Prior to Exercise 16 - HA Cluster
-# - on cp2    node: install_kubernetes_packages.sh cp2 -1.25.4
-# - on cp3    node: install_kubernetes_packages.sh cp3 -1.25.4
+# - on cp2    node: install_kubernetes_packages.sh cp2 -1.26.1
+# - on cp3    node: install_kubernetes_packages.sh cp3 -1.26.1
 #
 # To Join cp2, cp3 as control-plane nodes
 # - on cp:
@@ -23,7 +23,8 @@
 
 NODE_NAME=$1
 
-INITIAL_RELEASE=1.24.1
+#INITIAL_RELEASE=1.24.1
+INITIAL_RELEASE=1.26.1
 
 NODE_NAME=k8scp
 NODE_IP=$( hostname -I | awk '{ print $1; }' )
