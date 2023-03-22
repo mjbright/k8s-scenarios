@@ -31,15 +31,18 @@ LOOP_CONNECT_FROM_LOCAL_NODE() {
 
 FROM_POD() {
     set -x
+
+    #IMAGE_NAME=alpine
+    IMAGE_NAME=busybox
    
-    $KUBECTL describe pod testpod 2>&1 | grep Image: | grep " alpine$"
+    $KUBECTL describe pod testpod 2>&1 | grep Image: | grep " ${IMAGE_NAME}$"
     if [ $? -eq 0 ]; then
         $KUBECTL exec -it testpod -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
         $KUBECTL label testpod hide=k1spy
     else
-        #$KUBECTL run testpod --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
-        #$KUBECTL run testpod --dry-run=client -o yaml --rm -it --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
-        $KUBECTL run testpod --dry-run=client -o yaml --image alpine -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
+        #$KUBECTL run testpod --rm -it --image ${IMAGE_NAME} -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
+        #$KUBECTL run testpod --dry-run=client -o yaml --rm -it --image ${IMAGE_NAME} -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
+        $KUBECTL run testpod --dry-run=client -o yaml --image ${IMAGE_NAME} -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
             sed -e 's/run: testpod/hide: k1spy/' | $KUBECTL apply -f -
         while true; do $KUBECTL logs testpod -f; sleep 2; done
     fi
