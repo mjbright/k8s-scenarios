@@ -18,7 +18,7 @@ SVC=svc/$APP_NAME
 
 KUBECTL="kubectl -n demo"
 kubectl get ns demo || RUN kubectl create ns demo
-RUN kubectl rollout restart -n kube-system deployment coredns
+#RUN kubectl rollout restart -n kube-system deployment coredns
 
 TMP=~/tmp/demos
 mkdir -p $TMP
@@ -113,13 +113,20 @@ case $STRATEGY in
     ROLLING)
         #RUN_PRESS $KUBECTL create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1 --record
         #CMD="$KUBECTL create deploy $APP_NAME --image ${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1"
-        CMD="$KUBECTL create -f deploy-web.yaml"
-        NORUN_PRESS "---- $CMD"
-        $CMD --dry-run=client -o yaml |
-            sed 's/^  labels:/\ \ annotations:\n\ \ \ \ kubernetes.io\/change-cause: CHANGE_CAUSE\n\ \ labels:/' |
-            sed "s?CHANGE_CAUSE?$CMD?" |
-	    tee $TMP/ROLLING_deploy_${APP_NAME}.yaml |
-            $KUBECTL create -f -
+        #CMD="$KUBECTL create -f deploy-web.yaml"
+        RUN_PRESS $KUBECTL create -f deploy-web.yaml
+        #NORUN_PRESS "---- $CMD"
+        #$CMD --dry-run=client -o yaml |
+            #sed 's/^  labels:/\ \ annotations:\n\ \ \ \ kubernetes.io\/change-cause: CHANGE_CAUSE\n\ \ labels:/' |
+            #sed "s?CHANGE_CAUSE?$CMD?" |
+       
+        #set -x
+        IMAGE="${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1"
+        IMAGE1=$IMAGE
+        echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Created initial deployment using image $IMAGE""
+        $KUBECTL annotate deploy web kubernetes.io/change-cause="Created initial deployment using image $IMAGE"
+        #set +x
+	      #tee $TMP/ROLLING_deploy_${APP_NAME}.yaml | $KUBECTL create -f -
         ;;
     RECREATE)
         # RECREATE:
@@ -153,17 +160,29 @@ RUN_PRESS $KUBECTL scale $DEPLOY --replicas=$REPLICAS
 
 echo
 echo "NOTE: remember pause/resume during rollout"
-RUN_PRESS $KUBECTL set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2 --record
+#RUN_PRESS $KUBECTL set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2 --record
+IMAGE=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2
+RUN_PRESS $KUBECTL set image $DEPLOY ${APP_CONTAINER}=${IMAGE}
+echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE""
+$KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE"
+
 RUN_PRESS $KUBECTL rollout pause  $DEPLOY
 RUN_PRESS $KUBECTL rollout resume $DEPLOY
 RUN $KUBECTL rollout status ${DEPLOY}
 RUN_PRESS $KUBECTL rollout history ${DEPLOY}
 
-RUN_PRESS $KUBECTL set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3 --record
+#RUN_PRESS $KUBECTL set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3 --record
+IMAGE=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3
+RUN_PRESS $KUBECTL set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE}
+echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE""
+$KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE"
+
 RUN $KUBECTL rollout status ${DEPLOY}
 RUN_PRESS $KUBECTL rollout history ${DEPLOY}
 #RUN_PRESS $KUBECTL rollout undo ${DEPLOY}
 RUN_PRESS $KUBECTL rollout undo ${DEPLOY} --to-revision 1
+echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Rolled back to initial revision using image $IMAGE1""
+$KUBECTL annotate deploy web kubernetes.io/change-cause="Rolled back to initial revision using image $IMAGE1"
 RUN_PRESS $KUBECTL rollout history ${DEPLOY}
 
 exit 0
