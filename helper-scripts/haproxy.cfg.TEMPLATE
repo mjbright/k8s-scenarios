@@ -47,7 +47,7 @@ backend k8sServers
 #   server cp3  REPLACE_MASTER3_PRIV_IP:6443 check
 
 listen stats
-     bind :32099
+     bind :9999
      mode http
      stats enable
      stats hide-version
