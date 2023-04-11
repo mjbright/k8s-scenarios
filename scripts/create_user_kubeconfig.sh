@@ -12,6 +12,8 @@
 mkdir -p ~/tmp/kubeconfig.user$$
 cd       ~/tmp/kubeconfig.user$$
 
+which jq || sudo apt-get install -y jq
+
 die() { echo "$0: die - $*" >&2; exit 1; }
 
 DESTROY() {
