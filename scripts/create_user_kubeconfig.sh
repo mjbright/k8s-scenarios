@@ -9,8 +9,9 @@
 #   $0 user2 [<op-file>]
 #
 
-mkdir -p ~/tmp/kubeconfig.user$$
-cd       ~/tmp/kubeconfig.user$$
+TMP_DIR=~/tmp/kubeconfig.user$$
+mkdir -p $TMP_DIR/
+cd       $TMP_DIR/
 
 which jq || sudo apt-get install -y jq
 
@@ -111,12 +112,16 @@ EOF
         cp -a $PWD/kubeconfig.${USER_NAME} $OP_FILE
     fi
 
+    echo; echo "---- Temp files:"
+    ls -al $TMP_DIR/
+    echo; echo "---- User Kubeconfig file:"
     ls -al $OP_FILE
 }
 
 NEW_USER=$1
 OP_FILE=""
-[ ! -z "$2" ] && OP_FILE=$2
+[ ! -z "$2"     ] && OP_FILE=$2
+[ -z "$OP_FILE" ] && OP_FILE=~/.kube/config.${NEW_USER}
 
 DESTROY $NEW_USER
 
