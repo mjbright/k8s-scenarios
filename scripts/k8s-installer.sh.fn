@@ -729,7 +729,8 @@ INSTALL_FLANNEL() {
 INSTALL_CALICO() {
     STEP_HEADER "INSTALL_CALICO:"  "Install Calico networking plugin"
     # Keep local copy of calico.yaml:
-    RUN wget -O ~/calico.yaml https://docs.projectcalico.org/manifests/calico.yaml
+    # 404: RUN wget -O ~/calico.yaml https://docs.projectcalico.org/manifests/calico.yaml
+    RUN wget -O ~/calico.yaml https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/calico.yaml
     RUN kubectl apply -f ~/calico.yaml
 
     # From: https://stackoverflow.com/questions/53198576/ansible-playbook-wait-until-all-pods-running
