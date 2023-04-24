@@ -30,6 +30,13 @@ PV_RATE=20
 
 ## Functions: -------------------------------------------------
 
+RUN_APT_GET_INSTALL() {
+    yes | RUN sudo DEBIAN_FRONTEND=noninteractive apt-get -yqq install $*
+}
+APT_GET_INSTALL() {
+    yes | sudo DEBIAN_FRONTEND=noninteractive apt-get -yqq install $*
+}
+
 DISABLE_HOSTS_HOSTNAME_MGMT() {
   # Assumes we're on Ubuntu !!
   sudo grep manage_etc_hosts /etc/cloud/templates/hosts.debian.tmpl | grep -qi true &&
@@ -371,7 +378,8 @@ INSTALL_TOOLS() {
     [ $USE_PV -eq 0 ] && return
     dpkg -l | grep -q " pv " || {
         echo "Installing pv tool ..."
-        sudo apt-get install -qq -y pv
+        CHECK_APT_LOCK_STATUS "pv"
+        APT_GET_INSTALL pv
     }
 }
 
@@ -426,6 +434,7 @@ HARD_RESET_NODE() {
     if [ $PKGS_TO_REMOVE -ne 0 ]; then
         echo "... no Kubernetes packages to be removed"
     else
+        CHECK_APT_LOCK_STATUS "unhold-rm-k"
         RUN sudo apt-mark unhold kubectl kubeadm kubelet
         RUN sudo apt-get  remove -y kubectl kubeadm kubelet
     fi
@@ -441,6 +450,7 @@ HARD_RESET_NODE() {
 }
 
 REMOVE_CRIO() {
+    CHECK_APT_LOCK_STATUS "rm-crio"
     RUN sudo apt-get remove -y cri-o cri-o-runc podman buildah
     RUN sudo apt-get autoremove -y
 
@@ -461,6 +471,7 @@ REMOVE_DOCKER() {
     #YESNO "Remove Docker - remove packages; remove repo docker.list file" "y" || exit 0
     YESNO "Remove Docker - remove packages" "y" || exit 0
 
+    CHECK_APT_LOCK_STATUS "rm-docker"
     RUN sudo apt-get  remove -y $DOCKER_PACKAGES
 
     [ -d /var/run/crio ] && RUN sudo rm -rf /var/run/crio
@@ -481,6 +492,7 @@ INSTALL_PKGS() {
     INSTALL_BASE_PKGS
     $INSTALL_CE
 
+    CHECK_APT_LOCK_STATUS "install-pkgs"
     STEP_HEADER "INSTALL_PKGS:"  "Download/install the GPG key used to sign the Kubernetes packages"
     RUN 'curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -'
 
@@ -494,7 +506,7 @@ INSTALL_PKGS() {
 
     STEP_HEADER "INSTALL_PKGS:"  "Install the Kubernetes packages kubeadm (installer), kubectl (client), kubelet (manages Docker)"
     RUN sudo apt-mark unhold kubectl kubeadm kubelet
-    RUN sudo apt-get install -qq -y kubelet=$K8S_VERSION kubeadm=$K8S_VERSION kubectl=$K8S_VERSION 
+    RUN_APT_GET_INSTALL kubelet=$K8S_VERSION kubeadm=$K8S_VERSION kubectl=$K8S_VERSION 
 
     STEP_HEADER "INSTALL_PKGS:"  "'mark' the packages as held at their current version - prevent accidental upgrades"
     RUN sudo apt-mark hold kubelet kubeadm kubectl
@@ -521,6 +533,7 @@ INSTALL_PKGS() {
 INSTALL_BASE_PKGS() {
     #DEMO_HEADER "INSTALL_BASE_PKGS:"  "This step will add the Kubernetes package repository and install kubeadm/kubelet/kubectl packages"
     STEP_HEADER "INSTALL_BASE_PKGS:"  "Reread(update) the list of available packages"
+    CHECK_APT_LOCK_STATUS "install-base-pkgs"
     RUN sudo apt-get -qq update
     STEP_HEADER "INSTALL_BASE_PKGS:"  "Upgrading all packages to latest available versions"
     RUN sudo apt-get -qq -y upgrade
@@ -528,7 +541,7 @@ INSTALL_BASE_PKGS() {
 
     #RUN sudo apt-get -qq update
     STEP_HEADER "INSTALL_BASE_PKGS:"  "Install packages necessary to pull packages over https"
-    RUN sudo apt-get install -qq -y curl gnupg2 software-properties-common apt-transport-https ca-certificates vim git wget
+    RUN_APT_GET_INSTALL curl gnupg2 software-properties-common apt-transport-https ca-certificates vim git wget
 }
 
 INSTALL_DOCKER() {
@@ -547,7 +560,7 @@ INSTALL_DOCKER() {
     RUN sudo apt-get -qq update
 
     STEP_HEADER "INSTALL_DOCKER:"  "Install the packages containerd.io (container engine), docker-ce* (docker client and daemon)"
-    RUN sudo apt-get install -y containerd.io docker-ce docker-ce-cli
+    RUN_APT_GET_INSTALL containerd.io docker-ce docker-ce-cli
     echo "Ignore possible Docker failures at this stage"
     CHECK_DOCKER_STARTED
 
@@ -687,7 +700,6 @@ KUBEADM_INIT() {
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
         RUN "sudo kubeadm init --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
     fi
-XXXX
 
     [ ! -f /etc/kubernetes/admin.conf ] &&
         die "Install failed - no /etc/kubernetes/admin.conf file"

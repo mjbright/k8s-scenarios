@@ -6,8 +6,12 @@ CRIO_PKGS="cri-o cri-o-runc podman buildah"
 KUBE_PKGS="kubeadm kubectl kubelet"
 KUBEADM_CONFIG=""
 
+export DEBIAN_FRONTEND=noninteractive
+
 shopt -s expand_aliases
 alias apt-get='apt-get -o DPkg::Lock::Timeout=60'
+
+HOSTNAME=$(hostname)
 
 POD_CIDR="192.168.0.0/16"
 CLUSTER_CIDR="10.96.0.0/12"
@@ -73,8 +77,10 @@ FORCE_NODENAME=1
 #K8S_VERSION=1.24.0-00
 #K8S_VERSION=1.24.4-00
 #CRIO_VERSION=1.24
-K8S_VERSION=1.25.2-00
-CRIO_VERSION=1.25
+#K8S_VERSION=1.25.2-00
+#CRIO_VERSION=1.25
+K8S_VERSION=1.26.0-00
+CRIO_VERSION=1.26
 
 PV_RATE=40
 
@@ -101,11 +107,43 @@ die() {
     exit 1
 }
 
+CHECK_APT_LOCK_STATUS() {
+    # https://serverfault.com/questions/221871/how-do-i-check-to-see-if-an-apt-lock-file-is-locked
+
+    echo "--[$*] Checking dpkg lock status -------------"
+    sudo lsof /var/lib/dpkg/lock
+    ps -fade | grep " apt" | grep -v grep
+
+    local LOOP=0
+    while true; do
+        let LOOP=LOOP+1
+        echo "sudo flock --timeout 60 ... --close /var/lib/dpkg/lock apt-get ..."
+        sudo flock --timeout 60 --exclusive --close /var/lib/dpkg/lock apt-get \
+                   -y -o Dpkg::Options::="--force-confold" upgrade
+
+        if [ $? -eq 0 ]; then
+          return 0
+        fi
+        PID=$( sudo flock --timeout 60 --exclusive --close /var/lib/dpkg/lock apt-get \
+                   -y -o Dpkg::Options::="--force-confold" upgrade |&
+            grep It is held by process 10918 | sed 's/.* is held by process //' )
+        [ ! -z "$PID" ] && pstree -aps $PID
+
+        echo "[Loop $LOOP] Another process has f-locked /var/lib/dpkg/lock" 1>&2
+        echo "sudo lsof /var/lib/dpkg/lock"
+        sudo lsof /var/lib/dpkg/lock
+        ps -fade | grep " apt" | grep -v grep
+        sleep 5
+    done
+}
+
 REMOVE_PKGS() {
     #dpkg -l | grep -q kubeadm && { }
     ps -fade | grep -v grep |  grep -E "kubelet|kube-api|kube-sched|kube-proxy|apiserver-etcd" && {
         RUN sudo kubeadm reset --force
     }
+
+    CHECK_APT_LOCK_STATUS "rm"
 
     sudo apt-mark showhold | grep kubeadm && {
         RUN sudo apt-mark unhold kubeadm kubelet kubectl
@@ -182,9 +220,11 @@ REMOVE_PKGS() {
 }
 
 APT_BASE() {
+    CHECK_APT_LOCK_STATUS "base"
+
     RUN sudo apt-get update -qq &&
       RUN sudo apt-get upgrade -qq -y
-    RUN sudo apt-get install -qq -y vim nano libseccomp2 curl wget
+    RUN_APT_GET_INSTALL vim nano libseccomp2 curl wget
 }
 
 LINUX_CONFIG() {
@@ -259,17 +299,6 @@ SET_OS() {
 }
 
 SET_REPOS_CRIO() {
-
-    # New with 1.24: libseccomp2 for cri-o-runc (part1)
-    ## __FILE=/etc/apt/sources.list.d/backports.list
-    ## echo 'deb http://deb.debian.org/debian buster-backports main' |
-        ## sudo tee $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
-
-    ## RUN sudo apt-get update -qq ||
-        ## RUN sudo apt-get update || die "apt-get update had errors"
-
     __FILE=/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
     echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
         RUN sudo tee $__FILE
@@ -281,54 +310,6 @@ SET_REPOS_CRIO() {
         RUN sudo tee $__FILE
     [ ! -s $__FILE ] && die "File $__FILE is empty"
     [ ! -f $__FILE ] && die "File $__FILE is missing"
-
-
-    ## #Add repos and keys   
-    ## __FILE=/etc/apt/sources.list.d/crio.list
-    ## #echo "deb http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
-    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
-    ##     RUN sudo tee $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
-
-    ## __FILE=/etc/apt/sources.list.d/.Release.key
-    ## curl -sL http://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
-    ##     RUN sudo tee $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
-        #sudo apt-key add -
-    ## RUN sudo apt-key add /etc/apt/sources.list.d/.Release.key
-
-    ## __FILE=/etc/apt/sources.list.d/libcontainers.list
-    ## #echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
-    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
-    ##     RUN sudo tee $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
-
-    # RUN sudo apt-get update -qq ||
-        # RUN sudo apt-get update || die "apt-get update had errors"
-
-    # New with 1.24: libseccomp2 for cri-o-runc (part2)
-    #apt-get update
-    ## RUN sudo apt-get install -y -t buster-backports libseccomp2
-    ## ## RUN sudo apt-get update -t buster-backports libseccomp2
-
-    # New with 1.24: cri-o
-    ## __FILE=/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
-    ##     RUN sudo tee $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
-
-    ## __FILE="/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:${CRIO_VERSION}.list"
-    ## RUN sudo ls -al "$__FILE"
-    ## RUN sudo rm "$__FILE"
-    ## RUN sudo ls -al "$__FILE"
-    ## echo "deb [signed-by=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/ /" |
-    ##     RUN sudo tee "$__FILE"
-    ## [ ! -s "$__FILE" ] && die "File $__FILE is empty"
-    ## [ ! -f "$__FILE" ] && die "File $__FILE is missing"
 
     RUN sudo mkdir -p /usr/share/keyrings
 
@@ -342,26 +323,13 @@ SET_REPOS_CRIO() {
     curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
         RUN sudo gpg --dearmor -o $__FILE
 
-    ## mkdir -p /usr/share/keyrings
-    ## __FILE=/usr/share/keyrings/libcontainers-archive-keyring.gpg
-    ## [ -f $__FILE ] && sudo rm $__FILE
-    ## curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/Release.key |
-        ## RUN sudo gpg --dearmor -o $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
+    CHECK_APT_LOCK_STATUS "repos_crio"
 
-    ## __FILE=/usr/share/keyrings/libcontainers-crio-archive-keyring.gpg
-    ## [ -f $__FILE ] && sudo rm $__FILE
-    ## curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/$CRIO_VERSION/$OS/Release.key |
-    ##     RUN sudo gpg --dearmor -o $__FILE
-    ## [ ! -s $__FILE ] && die "File $__FILE is empty"
-    ## [ ! -f $__FILE ] && die "File $__FILE is missing"
-    
     RUN sudo apt-get update -qq
 }
 
 INSTALL_NERDCTL() {
-    wget -qO /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v0.23.0/nerdctl-0.23.0-linux-amd64.tar.gz
+    #wget -qO /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v0.23.0/nerdctl-0.23.0-linux-amd64.tar.gz
     wget -qO /tmp/nerdctl.tgz https://github.com/containerd/nerdctl/releases/download/v1.0.0/nerdctl-1.0.0-linux-amd64.tar.gz
     ls -al /tmp/nerdctl.tgz
     tar tf /tmp/nerdctl.tgz
@@ -377,9 +345,11 @@ INSTALL_CONTAINERD() {
     # Add Docker/Containerd GPG key:
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 
+    CHECK_APT_LOCK_STATUS "containerd"
+
     RUN sudo add-apt-repository "'deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable'"
     RUN sudo apt-get update
-    RUN sudo apt-get install -y containerd.io
+    RUN_APT_GET_INSTALL containerd.io
 
     sudo mkdir -p /etc/containerd
     sudo containerd config default | sudo tee /etc/containerd/config.toml
@@ -393,9 +363,10 @@ INSTALL_CONTAINERD() {
 }
 
 INSTALL_CRIO() {
-    RUN sudo apt-get install -qq -y $CRIO_PKGS ||
+    CHECK_APT_LOCK_STATUS "crio"
+
+    RUN_APT_GET_INSTALL $CRIO_PKGS ||
         die "Failed to install cri-o packages '$CRIO_PKGS'"
-    #RUN apt-get install cri-o cri-o-runc
     sleep 3
 
     sudo sed -i 's/,metacopy=on//g' /etc/containers/storage.conf
@@ -419,10 +390,12 @@ INSTALL_KUBE() {
 
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
 
+    CHECK_APT_LOCK_STATUS "kube"
+
     RUN sudo apt-get update -qq
 
     RUN sudo apt-mark unhold kubeadm kubelet kubectl
-    RUN sudo apt-get install -qq -y --allow-downgrades kubeadm=${K8S_VERSION} kubelet=${K8S_VERSION} kubectl=${K8S_VERSION}
+    RUN_APT_GET_INSTALL --allow-downgrades kubeadm=${K8S_VERSION} kubelet=${K8S_VERSION} kubectl=${K8S_VERSION}
     [ $? -ne 0 ] && {
          dpkg -l | grep -E " (kubeadm|kubelet|kubectl) " | grep ^iU &&
              die "Looks like kubeadm/kubelet/kubectl install failed"
@@ -513,8 +486,8 @@ HAPPY_SAILING_TEST() {
 
 INSTALL_PODMAN() {
     cd ~/tmp
-    RUN wget $PODMAN_URL
-    RUN tar xf podman-linux-amd64.tar.gz
+    RUN wget -qO podman.tar.gz $PODMAN_URL
+    RUN tar xf podman.tar.gz
 
     #RUN sudo rsync -av ~/tmp/podman-linux-amd64/ /
     RUN sudo rsync -av ~/tmp/podman-linux-amd64/usr/ /usr/
@@ -592,7 +565,7 @@ EOF
        -set-nodename) shift; FORCE_NODENAME=$1;;
 
         # TODO: Fix to work with multiple control nodes:
-       -CP)   NODE_ROLE="control";
+       -c|-CP)   NODE_ROLE="control";
               #ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
               ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
@@ -608,7 +581,7 @@ EOF
         -p) PROMPTS=1;;
 
         -U) UNTAINT_CONTROL_NODE; exit $?;;
-        -C) INSTALL_CALICO; exit $?;;
+        -calico) INSTALL_CALICO; exit $?;;
 
        # -R)   ACTION="HARD_RESET_NODE";;
        # -r)   ACTION="SOFT_RESET_NODE";;
@@ -621,9 +594,17 @@ EOF
         -q)   PV_RATE=100;;
         -Q)   ACTION="QUICK_RESET_UNINSTALL_REINSTALL";;
 
-      -c) ROLE="cp";;
-      -w) ROLE="worker"; HOST="worker";;
-
+      -cp) ROLE="cp"
+          case $HOSTNAME in
+              *cp[1-9]) HOST="cp${HOSTNAME##*cp}"
+          esac
+          ;;
+      -w|-wo) ROLE="worker"
+          HOST="worker"
+          case $HOSTNAME in
+              *worker[1-9]) HOST="worker${HOSTNAME##*worker}"
+          esac
+          ;;
       -init) KUBEADM_INIT; exit;;
       -helm) INSTALL_HELM; exit;;
       -keep-sail) HAPPY_SAILING_TEST "KEEP"; exit;;
