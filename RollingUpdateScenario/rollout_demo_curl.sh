@@ -15,7 +15,14 @@ GET_SVC_IP() {
 GET_SVC_IP
 
 CURL_OPTS="--connect-timeout 2 --max-time 4"
-WGET_OPTS="--timeout 4 --tries 1"
+WGET_OPTS="-qO - --timeout 4 --tries 1"
+
+GET_CMD="wget $WGET_OPTS"
+GET_CMD="curl $CURL_OPTS"
+
+#IMAGE_NAME=alpine
+IMAGE_NAME=busybox
+#IMAGE_NAME=ubuntu
 
 LOOP_CONNECT_FROM_LOCAL_NODE() {
     while true; do
@@ -32,17 +39,14 @@ LOOP_CONNECT_FROM_LOCAL_NODE() {
 FROM_POD() {
     set -x
 
-    #IMAGE_NAME=alpine
-    IMAGE_NAME=busybox
-   
     $KUBECTL describe pod testpod 2>&1 | grep Image: | grep " ${IMAGE_NAME}$"
     if [ $? -eq 0 ]; then
-        $KUBECTL exec -it testpod -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
+        $KUBECTL exec -it testpod -- sh -c "while true; do $GET_CMD web/1; sleep 1; done"
         $KUBECTL label testpod hide=k1spy
     else
-        #$KUBECTL run testpod --rm -it --image ${IMAGE_NAME} -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done"
-        #$KUBECTL run testpod --dry-run=client -o yaml --rm -it --image ${IMAGE_NAME} -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
-        $KUBECTL run testpod --dry-run=client -o yaml --image ${IMAGE_NAME} -- sh -c "while true; do wget $WGET_OPTS -qO - web/1; sleep 1; done" |
+        #$KUBECTL run testpod --rm -it --image ${IMAGE_NAME} -- sh -c "while true; do $GET_CMD web/1; sleep 1; done"
+        #$KUBECTL run testpod --dry-run=client -o yaml --rm -it --image ${IMAGE_NAME} -- sh -c "while true; do $GET_CMD web/1; sleep 1; done" |
+        $KUBECTL run testpod --dry-run=client -o yaml --image ${IMAGE_NAME} -- sh -c "while true; do $GET_CMD web/1; sleep 1; done" |
             sed -e 's/run: testpod/hide: k1spy/' | $KUBECTL apply -f -
         while true; do $KUBECTL logs testpod -f; sleep 2; done
     fi
