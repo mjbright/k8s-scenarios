@@ -123,7 +123,8 @@ case $STRATEGY in
         #set -x
         IMAGE="${IMAGE_BASE}:${IMAGE_TAG_PREFIX}1"
         IMAGE1=$IMAGE
-        echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Created initial deployment using image $IMAGE""
+        #echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Created initial deployment using image $IMAGE""
+        YELLOW "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Created initial deployment using image $IMAGE""; echo
         $KUBECTL annotate deploy web kubernetes.io/change-cause="Created initial deployment using image $IMAGE"
         #set +x
 	      #tee $TMP/ROLLING_deploy_${APP_NAME}.yaml | $KUBECTL create -f -
@@ -163,7 +164,7 @@ echo "NOTE: remember pause/resume during rollout"
 #RUN_PRESS $KUBECTL set image $DEPLOY ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2 --record
 IMAGE=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}2
 RUN_PRESS $KUBECTL set image $DEPLOY ${APP_CONTAINER}=${IMAGE}
-echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE""
+YELLOW "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE""; echo
 $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE"
 
 RUN_PRESS $KUBECTL rollout pause  $DEPLOY
@@ -174,14 +175,14 @@ RUN_PRESS $KUBECTL rollout history ${DEPLOY}
 #RUN_PRESS $KUBECTL set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3 --record
 IMAGE=${IMAGE_BASE}:${IMAGE_TAG_PREFIX}3
 RUN_PRESS $KUBECTL set image ${DEPLOY} ${APP_CONTAINER}=${IMAGE}
-echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE""
+YELLOW "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE""; echo
 $KUBECTL annotate deploy web kubernetes.io/change-cause="Upgraded to image $IMAGE"
 
 RUN $KUBECTL rollout status ${DEPLOY}
 RUN_PRESS $KUBECTL rollout history ${DEPLOY}
 #RUN_PRESS $KUBECTL rollout undo ${DEPLOY}
 RUN_PRESS $KUBECTL rollout undo ${DEPLOY} --to-revision 1
-echo "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Rolled back to initial revision using image $IMAGE1""
+YELLOW "-- $KUBECTL annotate deploy web kubernetes.io/change-cause="Rolled back to initial revision using image $IMAGE1""; echo
 $KUBECTL annotate deploy web kubernetes.io/change-cause="Rolled back to initial revision using image $IMAGE1"
 RUN_PRESS $KUBECTL rollout history ${DEPLOY}
 
