@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Examples usage:
+#
+# "Standard" containerd based Kubernetes install:
+# - on cp node
+#   ./scripts/k8s-installer.sh -q -CP
+# - on worker node:
+#   ./scripts/k8s-installer.sh -q -w
+#
+# "Docker-based" Kubernetes install
+# - on cp node:
+#   ./scripts/k8s-installer.sh -q -D -CP
+# - on worker node:
+#   ./scripts/k8s-installer.sh -q -D -w
+
 #CRIO_PKGS="cri-o cri-o-runc cri-tools"
 #KUBE_PKGS="kubeadm kubectl kubelet kubernetes-cni"
 CRIO_PKGS="cri-o cri-o-runc podman buildah"
@@ -409,6 +423,10 @@ INSTALL_KUBE() {
     RUN sudo apt-mark hold kubeadm kubelet kubectl
 
     [ "$CONTAINER_ENGINE" = "CONTAINERD" ] && INSTALL_CONTAINERD
+    [ "$CONTAINER_ENGINE" = "DOCKER" ] && {
+        INSTALL_DOCKER
+        INSTALL_CRI_DOCKERD
+    }
 }
 
 INSTALL_HELM() {
@@ -565,6 +583,8 @@ EOF
        -lb) LB_ARGS="--control-plane-endpoint $2"; shift;;
        -trace) SHOW_CALLER=1;;
        -set-nodename) shift; FORCE_NODENAME=$1;;
+
+        -D) CONTAINER_ENGINE=DOCKER;;
 
         # TODO: Fix to work with multiple control nodes:
        -c|-CP)   NODE_ROLE="control";

@@ -609,6 +609,30 @@ EOF
     [ $? -ne 0 ] && ALWAYS_WARN_PROMPT "Docker doesn't seem to be started"
 }
 
+INSTALL_CRI_DOCKERD() {
+    STEP_HEADER "INSTALL_DOCKER:"  "Download/install crio-dockerd adapation layer"
+    RUN wget -qO /tmp/cri-dockerd.tgz https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.2/cri-dockerd-0.3.2.amd64.tgz
+
+    #die "SO FAR SO GOOD"
+
+    #ls -al -tr /tmp/cri-dockerd.tgz
+    #tar tf /tmp/cri-dockerd.tgz
+
+    RUN tar -C /tmp -xf /tmp/cri-dockerd.tgz
+    ls -al /tmp/cri-dockerd/cri-dockerd
+    sudo mkdir -p /usr/local/bin/
+    RUN sudo install -o root -g root -m 0755  /tmp/cri-dockerd/cri-dockerd /usr/local/bin/cri-dockerd
+    mkdir -p /tmp/cri-dockerd/src
+    cd /tmp/cri-dockerd/src
+    RUN git clone https://github.com/Mirantis/cri-dockerd /tmp/cri-dockerd/src/
+    cd /tmp/cri-dockerd/src/
+    RUN sudo cp -a packaging/systemd/* /etc/systemd/system/
+    sudo sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service
+    RUN sudo systemctl daemon-reload
+    RUN sudo systemctl enable --now cri-docker.service
+    RUN sudo systemctl enable --now cri-docker.socket
+}
+
 CHECK_DOCKER_STARTED() {
     sudo systemctl status docker | grep failed && {
         STEP_HEADER "INSTALL_DOCKER:"  "Re-starting Docker after failure"
@@ -691,6 +715,11 @@ KUBEADM_INIT() {
     STEP_HEADER "KUBEADM_INIT:"  "Pre-pulling container images"
     RUN sudo kubeadm config images pull
 
+    SOCKET=""
+    [ "$CONTAINER_ENGINE" = "DOCKER" ] && {
+        SOCKET="--cri-socket unix:///var/run/cri-dockerd.sock"
+    }
+
     if [ -z "$KUBEADM_CONFIG" ]; then
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
@@ -698,7 +727,7 @@ KUBEADM_INIT() {
         RUN sudo "kubeadm init --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 |& tee kubeadm.init.op"
     else
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
-        RUN "sudo kubeadm init --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
+        RUN "sudo kubeadm init $SOCKET --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
     fi
 
     [ ! -f /etc/kubernetes/admin.conf ] &&
@@ -711,7 +740,7 @@ KUBEADM_INIT() {
 
     # Extract join command:
     grep -A1 -m1 "kubeadm join" kubeadm.init.op |
-        sed -e '1 s/^/sudo /' | tail -2 > ~/tmp/run_on_worker_to_join.txt
+        sed -e '1 s/^/sudo /' -e "s,kubeadm,kubeadm $SOCKET," | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
     STEP_HEADER "KUBEADM_INIT:"  "Showing installed node"
     RUN sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get nodes
@@ -812,8 +841,8 @@ UNTAINT_CONTROL_NODE() {
 }
 
 PRELOAD_USER_IMAGES() {
-    [ -f /tmp/images/load_mjbright-k8s-demo.tar.sh ] && /tmp/images/load_mjbright-k8s-demo.tar.sh
-    [ -f /tmp/images/load_other-images.tar.sh      ] && /tmp/images/load_other-images.tar.sh
+    [ -f /tmp/images/load_mjbright-k8s-demo.tar.sh ] && sh -x /tmp/images/load_mjbright-k8s-demo.tar.sh
+    [ -f /tmp/images/load_other-images.tar.sh      ] && sh -x /tmp/images/load_other-images.tar.sh
 }
 
 UNUSED_CHOOSE_CIDR() {
