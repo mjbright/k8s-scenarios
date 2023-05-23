@@ -712,19 +712,19 @@ EOF
 KUBEADM_INIT() {
     STEP_HEADER "KUBEADM_INIT:"  "Use the kubeadm installer to initialize the cluster 1st node (Control)"
 
-    STEP_HEADER "KUBEADM_INIT:"  "Pre-pulling container images"
-    RUN sudo kubeadm config images pull
-
     SOCKET=""
     [ "$CONTAINER_ENGINE" = "DOCKER" ] && {
         SOCKET="--cri-socket unix:///var/run/cri-dockerd.sock"
     }
 
+    STEP_HEADER "KUBEADM_INIT:"  "Pre-pulling container images"
+    RUN sudo kubeadm $SOCKET config images pull
+
     if [ -z "$KUBEADM_CONFIG" ]; then
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
         echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-        RUN sudo "kubeadm init --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 |& tee kubeadm.init.op"
+        RUN sudo "kubeadm init $SOCKET --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 |& tee kubeadm.init.op"
     else
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
         RUN "sudo kubeadm init $SOCKET --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
