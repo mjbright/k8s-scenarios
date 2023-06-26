@@ -155,7 +155,7 @@ RUN() {
 
     echo;
     CALLER=""
-    [ "$SHOW_CALLER" = "1" ] && CALLER="[$( caller 1 )]"
+    [ "$SHOW_CALLER" = "1" ] && CALLER="[$( caller 0 )]"
     YELLOW "--${CALLER} $*" | PV; echo
     READ_OPTIONS
     [ $? -ne 0 ] && return
@@ -720,14 +720,20 @@ KUBEADM_INIT() {
     STEP_HEADER "KUBEADM_INIT:"  "Pre-pulling container images"
     RUN sudo kubeadm $SOCKET config images pull
 
+    CP_ENDPOINT=""
+    K8SCP=$( grep -E " k8scp$| k8scp " /etc/hosts | awk '{ print $1; }' )
+    [ ! -z "$K8SCP" ] && CP_ENDPOINT="--control-plane-endpoint k8scp"
+    K8SLB=$( grep-E  " k8slb$| k8slb" /etc/hosts | awk '{ print $1; }' )
+    [ ! -z "$K8SLB" ] && CP_ENDPOINT="--control-plane-endpoint k8slb"
+
     if [ -z "$KUBEADM_CONFIG" ]; then
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
         echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-        RUN sudo "kubeadm init $SOCKET --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 |& tee kubeadm.init.op"
+        RUN sudo "kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 |& tee kubeadm.init.op"
     else
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
-        RUN "sudo kubeadm init $SOCKET --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
+        RUN "sudo kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
     fi
 
     [ ! -f /etc/kubernetes/admin.conf ] &&
