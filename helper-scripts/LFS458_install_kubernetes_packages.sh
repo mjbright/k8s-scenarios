@@ -9,8 +9,12 @@
 # - on worker node: install_kubernetes_packages.sh worker
 #
 # Prior to Exercise 16 - HA Cluster
-# - on cp2    node: install_kubernetes_packages.sh cp2 -1.26.1
-# - on cp3    node: install_kubernetes_packages.sh cp3 -1.26.1
+# - on cp2    node:
+#     chmod a+x /tmp/LFS458_install_kubernetes_packages.sh
+#     /tmp/LFS458_install_kubernetes_packages.sh cp2 -1.26.1
+# - on cp3    node: /tmp/LFS458_install_kubernetes_packages.sh cp3 -1.26.1
+#     chmod a+x /tmp/LFS458_install_kubernetes_packages.sh
+#     /tmp/LFS458_install_kubernetes_packages.sh cp3 -1.26.1
 #
 # To Join cp2, cp3 as control-plane nodes
 # - on cp:
