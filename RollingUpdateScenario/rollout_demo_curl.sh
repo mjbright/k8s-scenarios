@@ -17,8 +17,8 @@ GET_SVC_IP
 CURL_OPTS="--connect-timeout 2 --max-time 4"
 WGET_OPTS="-qO - --timeout 4 --tries 1"
 
-GET_CMD="wget $WGET_OPTS"
 GET_CMD="curl $CURL_OPTS"
+GET_CMD="wget $WGET_OPTS"
 
 #IMAGE_NAME=alpine
 IMAGE_NAME=busybox
