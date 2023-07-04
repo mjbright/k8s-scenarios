@@ -95,8 +95,14 @@ FORCE_NODENAME=1
 #CRIO_VERSION=1.25
 #K8S_VERSION=1.26.0-00
 #CRIO_VERSION=1.26
-K8S_VERSION=1.27.2-00
+K8S_VERSION=1.27.3-00
 CRIO_VERSION=1.27
+
+case $CONTAINER_ENGINE in
+    CONTAINERD) CONTAINER_ENGINE_VERSION=latest;;
+    CRIO) CONTAINER_ENGINE_VERSION=$CRIO_VERSION;;
+esac
+echo; echo "-- Installing k8s [$K8S_VERSION] & $CONTAINER_ENGINE [ $CONTAINER_ENGINE_VERSION ], logging to $LOGFILE"
 
 PV_RATE=40
 
@@ -104,7 +110,6 @@ mkdir -p ~/tmp/
 
 LOGFILE=~/tmp/$(basename $0).log
 
-echo; echo "-- Installing k8s $K8S_VERSION & CRI-O $CRIO_VERISON, logging to $LOGFILE"
 echo -e "-- $SCRIPT_VERSION_INFO"
 #exec &> >(tee -a "$LOGFILE")
 exec &> >(tee "$LOGFILE")
