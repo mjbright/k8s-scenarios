@@ -12,8 +12,15 @@ kubectl get no -o name | grep ^node/$NODE$ ||
 set -x
 kubectl drain $NODE --ignore-daemonsets --delete-local-data
 kubectl delete node $NODE
-kubectl get no
 set +x
+
+echo
+echo "Node deletion complete:"
+kubectl get no
+
+echo
+echo "Remember to run the following on the REMOVED NODE:"
+echo "    sudo kuebadm reset"
 
 exit
 
