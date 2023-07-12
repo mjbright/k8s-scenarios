@@ -564,6 +564,9 @@ kind: ClusterConfiguration
 apiServer:
   extraArgs:
     cloud-provider: external
+localAPIEndpoint:
+  advertiseAddress: "k8slb"
+  bindPort: 6443
 clusterName: $CLUSTER_NAME
 controllerManager:
   extraArgs:
