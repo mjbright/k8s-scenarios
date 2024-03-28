@@ -10,7 +10,7 @@ REPO_LINE="deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://
 
 die() { echo "$0: die - $*" >&2; exit 1; }
 
-[ $( id -un ) = "root" ] || die "Must be run as root [USER=$(id un)"
+[ $( id -un ) = "root" ] || die "Must be run as root [USER=$(id -un)"
 
 ## Func: --------------------------------------------------------------------------
 
