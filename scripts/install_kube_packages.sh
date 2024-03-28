@@ -91,6 +91,7 @@ CREATE_JOIN_SCRIPT() {
     
     grep -A 1 "kubeadm join" $OUT | tail -2 > $JSH
     chmod +x $JSH
+    sudo chown student:student $JSH
 
     echo; echo "Created script TO BE RUN ON WORKER:"
     set -x
