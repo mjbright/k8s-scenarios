@@ -57,6 +57,24 @@ ADD_DOCKER_REPO() {
 INSTALL_DOCKER() {
     echo; echo "==== Installing Docker"
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    sudo tee /etc/docker/daemon.json <<EOF
+{
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m"
+    },
+    "storage-driver": "overlay2"
+}
+EOF
+
+    # Configure to use containerd (not docker/cri-docker)
+    # https://github.com/RX-M/classfiles/blob/master/k8s.sh
+    sudo cp /etc/containerd/config.toml /etc/containerd/config.bak
+    sudo containerd config default | sudo tee /etc/containerd/config.toml
+    sudo sed -i -e 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+    sudo systemctl restart containerd
 }
 
 ENABLE_DOCKER_USERS() {
