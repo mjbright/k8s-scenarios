@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 
-[ -z "$K8S_RELEASE" ] && K8S_RELEASE=v1.29
+# Set defaults:
+[ -z "$K8S_RELEASE"    ] && K8S_RELEASE=v1.29
+[ -z "$CILIUM_RELEASE" ] && CILIUM_RELEASE=1.15.3
+
+## # Note: Setting POD_CIDR range to avoid 192.168.1.0/24 (home lab):
+## [ -z "$POD_CIDR"       ] && POD_CIDR="192.168.128.0/17"
 
 #KEY_URL="https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key"
 #REPO_LINE="deb http://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
 KEY_URL=https://pkgs.k8s.io/core:/stable:/${K8S_RELEASE}/deb/Release.key
 #REPO_LINE="deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
 REPO_LINE="deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8S_RELEASE}/deb/ /"
+
+KUBEADM_INIT_OUT=/home/student/kubeadm-init.out
+JOIN_SH=/home/student/kubeadm-join.sh
 
 die() { echo "$0: die - $*" >&2; exit 1; }
 
@@ -23,7 +31,7 @@ DISABLE_SWAP() {
 }
 
 CONFIG_SYSCTL() {
-    echo; echo "Configuring sysctl parameters for kubernetes .."
+    echo; echo "Configuring modules for kubernetes .."
     cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
 overlay
 br_netfilter
@@ -34,17 +42,21 @@ net.ipv4.ip_forward                 = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
-    sysctl --all    > ~/tmp/sysctl.all.before
+    echo; echo "Configuring sysctl parameters for kubernetes .."
+    sysctl --all    > ~/tmp/sysctl.all.before 2>&1
     sysctl --system > ~/tmp/sysctl.system.op 2>&1
-    sysctl --all    > ~/tmp/sysctl.all.mid
+    sysctl --all    > ~/tmp/sysctl.all.mid 2>&1
     sysctl --load /etc/sysctl.d/99-kubernetes-cri.conf > ~/tmp/sysctl.load.op 2>&1
     sysctl --all 2>&1 | grep -E "^net.(bridge|ipv4)." > ~/tmp/sysctl.netparams
     sysctl --all 2>&1 > ~/tmp/sysctl.all.after
 
+    echo; echo "Loading modules for kubernetes .."
     mkdir -p ~/tmp/
-    modprobe -c -C /etc/modules-load.d/containerd.conf 2>&1 | tee ~/tmp/containerd.conf.op
-    modprobe overlay
-    modprobe br_netfilter
+    { 
+        modprobe -c -C /etc/modules-load.d/containerd.conf
+        modprobe overlay
+        modprobe br_netfilter
+    } > ~/tmp/containerd.conf.op  2>&1
 }
 
 INSTALL_KUBE_PRE_PKGS() {
@@ -84,30 +96,43 @@ INSTALL_KUBE_PKGS() {
 }
 
 CREATE_JOIN_SCRIPT() {
-    local OUT=/home/student/kubeadm-init.out
-    local JSH=/home/student/kubeadm-join.sh
-
-    [ ! -f $OUT ] && die "Missing init o/pp file $OUT"
+    [ ! -f $KUBEADM_INIT_OUT ] && die "Missing init o/pp file $KUBEADM_INIT_OUT"
     
-    grep -A 1 "kubeadm join" $OUT | tail -2 > $JSH
-    chmod +x $JSH
-    sudo chown student:student $JSH
+    grep -A 1 "kubeadm join" $KUBEADM_INIT_OUT | tail -2 > $JOIN_SH
+    chmod +x $JOIN_SH
+    sudo chown student:student $JOIN_SH
 
     echo; echo "Created script TO BE RUN ON WORKER:"
     set -x
-    ls -al $JSH
-    cat $JSH
+    ls -al $JOIN_SH
+    cat $JOIN_SH
     set +x
+}
+
+INSTALL_CNI_CILIUM() {
+    # Adapted from:
+    #  https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/
+
+    CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+
+    CLI_ARCH=amd64
+    [ "$(uname -m)" = "aarch64" ] && CLI_ARCH=arm64
+
+    curl -sL --fail --remote-name-all \
+        https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+    sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+    sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+    rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+
+    cilium install --version $CILIUM_RELEASE
 }
 
 ## Args: --------------------------------------------------------------------------
 
 while [ -n "$1" ]; do
     case $1 in
-        -j|--join) 
-            CREATE_JOIN_SCRIPT
-	    exit $?
-	    ;;
+        -cni|--cilium) INSTALL_CNI_CILIUM; exit $?  ;;
+        -j|--join)     CREATE_JOIN_SCRIPT; exit $?  ;;
 	
         *) die "Unknown option '$1'";;
     esac
