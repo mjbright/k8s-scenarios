@@ -128,12 +128,79 @@ INSTALL_CNI_CILIUM() {
     cilium install --version $CILIUM_RELEASE
 }
 
+HAPPY_SAILING_TEST() {
+   KEEP="$1"; shift
+
+   TEST="test-$(( $RANDOM  % 100 ))"
+
+   # Check taints:
+   #kubectl taint node t-kube-2 node-role.kubernetes.io/master-
+   kubectl describe nodes | grep Taints: | grep -v '<none>' | grep No &&
+       die "Taint is still applied"
+
+   # Create deployment & service:
+   kubectl create deploy ${TEST} --image mjbright/k8s-demo:1 --replicas 3
+   kubectl expose deploy ${TEST} --port 80
+
+   #kubectl get pods -l app=${TEST} -o wide --no-headers | head -1
+   kubectl rollout status deploy ${TEST}
+
+   #kubectl get pods -l app=${TEST} -o wide --no-headers | head -1
+   IP=$( kubectl get pods -l app=${TEST} -o wide --no-headers | head -1 | awk '{ print $6; exit; }')
+   [ -z "$IP" ] && {
+       kubectl get pods -l app=${TEST} -o wide
+       die "Failed to get IP address for first pod"
+   }
+
+   echo; echo "Checking curl to first '${TEST}' Pod:"
+   CMD="curl -sL $IP/1"
+   $CMD | grep "pod .*@$IP" ||
+       die "Failed to curl to Pod at url $IP/1   [$CMD]"
+
+   SVC_IP=$( kubectl get svc ${TEST} --no-headers | awk '{ print $3; }' )
+   echo; echo "Checking curl to '${TEST}' Service:"
+   CMD="curl -sL $SVC_IP/1"
+   $CMD | grep "pod .*@" ||
+       die "Failed to curl to Pod at url $SVC_IP/1    [$CMD]"
+
+   curl -sL $SVC_IP
+   kubectl get svc ${TEST}
+   kubectl get pods -l app=${TEST} -o wide
+
+   if [ "$KEEP" = "KEEP" ]; then
+       #echo; echo "=================== KEEPing ====================="
+       ABS_NO_PROMPTS=0 ALL_PROMPTS=1 PROMPTS=1 PRESS ""
+   else
+       #echo; echo "------------------- CLEANing ---------------------"
+       echo; echo "Cleaning up ${TEST} deployment & service:"
+       kubectl delete svc/${TEST} deploy/${TEST}
+
+       WORKER_NODE=$( grep -m 3 kube /etc/hosts | tail -1 | awk '{ print $2; }' )
+       [ -z "$WORKER_NODE" ] && WORKER_NODE=worker
+
+       echo
+       if [ `kubectl get no | wc -l` = "2" ]; then
+           echo "Remember to join the 2nd node"
+           echo "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"
+           echo "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"
+           echo "- kubectl get nodes"
+           sleep 1
+       fi
+   fi
+
+   echo
+   echo "All done on the control node:"  "Happy sailing ..."
+}
+
 ## Args: --------------------------------------------------------------------------
 
 while [ -n "$1" ]; do
     case $1 in
         -cni|--cilium) INSTALL_CNI_CILIUM; exit $?  ;;
         -j|--join)     CREATE_JOIN_SCRIPT; exit $?  ;;
+        -keep-sail)    HAPPY_SAILING_TEST "KEEP"; exit;;
+        -sail)         HAPPY_SAILING_TEST "CLEAN"; exit;;
+
 	
         *) die "Unknown option '$1'";;
     esac
