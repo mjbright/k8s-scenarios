@@ -35,7 +35,7 @@ DISABLE_SWAP() {
 
 CONFIG_SYSCTL() {
     echo; echo "Configuring modules for kubernetes .."
-    cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+    cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf >/dev/null
 overlay
 br_netfilter
 EOF
@@ -67,7 +67,7 @@ INSTALL_KUBE_PRE_PKGS() {
     echo; echo "Performing apt-get update ..."
     apt-get update >/dev/null 2>&1
     echo; echo "Installing packages: $PKGS ..."
-    apt-get install -y $PKFGS
+    apt-get install -y $PKFGS >/dev/null 2>&1
 }
 
 INSTALL_KUBE_PKGS() {
@@ -91,9 +91,10 @@ INSTALL_KUBE_PKGS() {
     apt-get update >/dev/null 2>&1
 
     echo; echo "Installing packages: $PKGS ..."
-    apt-get install -y $PKGS
+    apt-get install -y $PKGS >/dev/null 2>&1
 
     echo; echo "Marking packages as 'hold': $PKGS ..."
+    echo "-- apt-mark hold $PKGS"
     apt-mark hold $PKGS
 }
 
