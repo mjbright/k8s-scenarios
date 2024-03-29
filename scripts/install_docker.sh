@@ -66,7 +66,7 @@ INSTALL_DOCKER() {
         echo; echo "==== Installing Docker + Containerd"
         sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
         echo; echo "==== Configuring Docker"
-        sudo tee /etc/docker/daemon.json >/dev/nul <<EOF
+        sudo tee /etc/docker/daemon.json >/dev/null <<EOF
 {
     "exec-opts": ["native.cgroupdriver=systemd"],
     "log-driver": "json-file",
