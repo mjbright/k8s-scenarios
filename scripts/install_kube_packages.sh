@@ -5,6 +5,8 @@ INSTALL_DOCKER=${INSTALL_DOCKER:-1}
 K8S_RELEASE=${K8S_RELEASE:-v1.29}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
+mkdir -p ~/tmp/
+
 ## # Note: Setting POD_CIDR range to avoid 192.168.1.0/24 (home lab):
 ## [ -z "$POD_CIDR"       ] && POD_CIDR="192.168.128.0/17"
 
@@ -52,7 +54,6 @@ EOF
     sysctl --all 2>&1 > ~/tmp/sysctl.all.after
 
     echo; echo "Loading modules for kubernetes .."
-    mkdir -p ~/tmp/
     { 
         modprobe -c -C /etc/modules-load.d/containerd.conf
         modprobe overlay
