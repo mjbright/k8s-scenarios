@@ -16,7 +16,7 @@ echo "- login then browse to the provided URL"
 echo "- Copy the pastebin value (except the last 2 suffix chars)"
 echo "- Use the value as a user name to ssh to the tmate session"
 echo "  e.g."
-echo "    ssh xy78fge923ss8809@lon1.tmate.io""
+echo "    ssh xy78fge923ss8809@lon1.tmate.io"
 
 
 cat > /tmp/tmate.export.sh <<EOF
