@@ -103,14 +103,15 @@ ENABLE_DOCKER_USERS() {
     [ $INSTALL_DOCKER -eq 0 ] && return 0
 
     echo; echo "==== Check Docker OK as root:"
-    sudo docker version
+    sudo docker ps
 
     for _USER in $USERS; do
         echo; echo "==== Check Docker OK as $_USER:"
 
         echo "-- sudo usermod -aG docker $_USER"
         sudo usermod -aG docker $_USER
-        sudo -u $_USER -i docker version
+        echo "[$_USER] docker ps"
+        sudo -u $_USER -i docker ps
     done
 }
 
