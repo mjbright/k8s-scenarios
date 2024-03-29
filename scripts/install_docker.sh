@@ -40,28 +40,33 @@ CLEAN() {
 ADD_DOCKER_REPO() {
     [ -f /etc/apt/sources.list.d/docker.list ] && return
 
-    echo; echo "==== Adding Docker Key & Repo"
-
+    echo; echo "==== Adding Docker Key"
     # Add Docker's official GPG key:
-    sudo apt-get update
-    sudo apt-get install -y ca-certificates curl gnupg
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    {
+      sudo apt-get update
+      sudo apt-get install -y ca-certificates curl gnupg
+      sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    } > ~/tmp/docker.keys.log 2>&1
 
+    echo; echo "==== Adding Docker Repo"
     # Add the repository to Apt sources:
-    echo \
+    {
+      echo \
         "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-       "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update
+         "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      sudo apt-get update
+    } > ~/tmp/docker.repo.log 2>&1
 }
 
 INSTALL_DOCKER() {
     if [ $INSTALL_DOCKER -ne 0 ]; then
         echo; echo "==== Installing Docker + Containerd"
         sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-        sudo tee /etc/docker/daemon.json <<EOF
+        echo; echo "==== Configuring Docker"
+        sudo tee /etc/docker/daemon.json >/dev/nul <<EOF
 {
     "exec-opts": ["native.cgroupdriver=systemd"],
     "log-driver": "json-file",
@@ -71,6 +76,7 @@ INSTALL_DOCKER() {
     "storage-driver": "overlay2"
 }
 EOF
+
     else 
         echo; echo "==== Installing Containerd"
         sudo apt-get install -y containerd.io
@@ -78,15 +84,17 @@ EOF
 
     # Configure to use containerd (not docker/cri-docker)
     # https://github.com/RX-M/classfiles/blob/master/k8s.sh
-    sudo cp /etc/containerd/config.toml /etc/containerd/config.bak
-    sudo containerd config default | sudo tee /etc/containerd/config.toml
-    sudo sed -i -e 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-    sudo systemctl restart containerd
+    {
+      sudo cp /etc/containerd/config.toml /etc/containerd/config.bak
+      sudo containerd config default | sudo tee /etc/containerd/config.toml
+      sudo sed -i -e 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+      sudo systemctl restart containerd
+    } > ~/tmp/containerd.k8s.log 2>&1
 }
 
 ENABLE_DOCKER_USERS() {
     USERS=$*
-    [ $INSTALL_DOCKER -eq 0 ] && return
+    [ $INSTALL_DOCKER -eq 0 ] && return 0
 
     echo; echo "==== Check Docker OK as root:"
     sudo docker version
@@ -104,4 +112,5 @@ ADD_DOCKER_REPO
 INSTALL_DOCKER
 [ $INSTALL_DOCKER -eq 0 ] && ENABLE_DOCKER_USERS ubuntu student
 
+exit 0
 
