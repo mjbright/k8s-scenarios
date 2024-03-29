@@ -108,6 +108,7 @@ ENABLE_DOCKER_USERS() {
     for _USER in $USERS; do
         echo; echo "==== Check Docker OK as $_USER:"
 
+        echo "-- sudo usermod -aG docker $_USER"
         sudo usermod -aG docker $_USER
         sudo -u $_USER -i docker version
     done
@@ -125,7 +126,7 @@ fi
 CLEAN
 ADD_DOCKER_REPO
 INSTALL_DOCKER
-[ $INSTALL_DOCKER -eq 0 ] && ENABLE_DOCKER_USERS ubuntu student
+[ $INSTALL_DOCKER -ne 0 ] && ENABLE_DOCKER_USERS ubuntu student
 
 exit 0
 
