@@ -6,6 +6,8 @@ INSTALL_DOCKER=${INSTALL_DOCKER:-1}
 # Based on https://docs.docker.com/engine/install/
 # - dropped ansible due to 'NoneType' errors !!
 
+## == Func: ======================================================================
+
 die() { echo "$0: die - $*" >&2; exit 1; }
 
 ARCH=$(uname -m)
@@ -110,6 +112,15 @@ ENABLE_DOCKER_USERS() {
         sudo -u $_USER -i docker version
     done
 }
+
+## == Args: ======================================================================
+
+if [ "$1" = "-cd" ]; then
+    echo "Installing only Containerd (not Docker)"
+    INSTALL_DOCKER=0
+fi
+
+## == Main: ======================================================================
 
 CLEAN
 ADD_DOCKER_REPO
