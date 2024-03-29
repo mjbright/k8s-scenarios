@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
 # Set defaults:
-[ -z "$K8S_RELEASE"    ] && K8S_RELEASE=v1.29
-[ -z "$CILIUM_RELEASE" ] && CILIUM_RELEASE=1.15.3
+INSTALL_DOCKER=${INSTALL_DOCKER:-1}
+K8S_RELEASE=${K8S_RELEASE:-v1.29}
+CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
 ## # Note: Setting POD_CIDR range to avoid 192.168.1.0/24 (home lab):
 ## [ -z "$POD_CIDR"       ] && POD_CIDR="192.168.128.0/17"

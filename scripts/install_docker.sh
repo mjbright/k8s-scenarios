@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# By default install docker, not just containerd:
+INSTALL_DOCKER=${INSTALL_DOCKER:-1}
+
 # Based on https://docs.docker.com/engine/install/
 # - dropped ansible due to 'NoneType' errors !!
 
@@ -55,10 +58,10 @@ ADD_DOCKER_REPO() {
 }
 
 INSTALL_DOCKER() {
-    echo; echo "==== Installing Docker"
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-    sudo tee /etc/docker/daemon.json <<EOF
+    if [ $INSTALL_DOCKER -ne 0 ]; then
+        echo; echo "==== Installing Docker + Containerd"
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        sudo tee /etc/docker/daemon.json <<EOF
 {
     "exec-opts": ["native.cgroupdriver=systemd"],
     "log-driver": "json-file",
@@ -68,6 +71,10 @@ INSTALL_DOCKER() {
     "storage-driver": "overlay2"
 }
 EOF
+    else 
+        echo; echo "==== Installing Containerd"
+        sudo apt-get install -y containerd.io
+    fi
 
     # Configure to use containerd (not docker/cri-docker)
     # https://github.com/RX-M/classfiles/blob/master/k8s.sh
@@ -79,6 +86,7 @@ EOF
 
 ENABLE_DOCKER_USERS() {
     USERS=$*
+    [ $INSTALL_DOCKER -eq 0 ] && return
 
     echo; echo "==== Check Docker OK as root:"
     sudo docker version
@@ -94,7 +102,6 @@ ENABLE_DOCKER_USERS() {
 CLEAN
 ADD_DOCKER_REPO
 INSTALL_DOCKER
-ENABLE_DOCKER_USERS ubuntu student
-
+[ $INSTALL_DOCKER -eq 0 ] && ENABLE_DOCKER_USERS ubuntu student
 
 
