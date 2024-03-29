@@ -64,7 +64,9 @@ ADD_DOCKER_REPO() {
 INSTALL_DOCKER() {
     if [ $INSTALL_DOCKER -ne 0 ]; then
         echo; echo "==== Installing Docker + Containerd"
-        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        {
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        } > ~/tmp/docker.install.log 2>&1
         echo; echo "==== Configuring Docker"
         sudo tee /etc/docker/daemon.json >/dev/null <<EOF
 {
@@ -79,7 +81,9 @@ EOF
 
     else 
         echo; echo "==== Installing Containerd"
-        sudo apt-get install -y containerd.io
+        {
+          sudo apt-get install -y containerd.io
+        } > ~/tmp/containerd.install.log 2>&1
     fi
 
     # Configure to use containerd (not docker/cri-docker)
