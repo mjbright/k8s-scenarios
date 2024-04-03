@@ -2,7 +2,8 @@
 
 die() { echo "$0: die - $*" >&2; exit 1; }
 
-OS=$(uname -o)
+OS=$(uname)
+#OS=$(uname -o)
 ARCH=$(uname -m)
 
 VERSION=v0.32.4
