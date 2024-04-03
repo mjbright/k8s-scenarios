@@ -214,7 +214,7 @@ done
 
 echo "Installing Kubernetes packages for release $K8S_RELEASE"
 
-[ $( id -un ) = "root" ] || die "Must be run as root [USER=$(id -un)"
+[ $( id -un ) = "root" ] || die "Must be run as root [USER=$(id -un)]"
 
 DISABLE_SWAP
 CONFIG_SYSCTL
