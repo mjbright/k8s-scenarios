@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 
 # Set defaults:
-INSTALL_DOCKER=${INSTALL_DOCKER:-1}
+INSTALL_DOCKER=${INSTALL_DOCKER:-0}
+INSTALL_CONTAINERD=${INSTALL_CONTAINERD:-0}
 K8S_RELEASE=${K8S_RELEASE:-v1.29}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
+
+SCRIPT_DIR=$( dirname $( readlink -f $0 ))
 
 mkdir -p ~/tmp/
 
@@ -101,6 +104,7 @@ INSTALL_KUBE_PKGS() {
 CREATE_JOIN_SCRIPT() {
     [ ! -f $KUBEADM_INIT_OUT ] && die "Missing init o/pp file $KUBEADM_INIT_OUT"
     
+    # Pickup just worker join command:
     grep -A 1 "kubeadm join" $KUBEADM_INIT_OUT | tail -2 > $JOIN_SH
     chmod +x $JOIN_SH
     sudo chown student:student $JOIN_SH
@@ -194,10 +198,56 @@ HAPPY_SAILING_TEST() {
    echo "All done on the control node:"  "Happy sailing ..."
 }
 
+INSTALL_KUBE() {
+    DISABLE_SWAP
+    CONFIG_SYSCTL
+    
+    echo "Checking Docker is available:"
+    sudo docker --version || die "Docker not accessible"
+
+    INSTALL_KUBE_PRE_PKGS
+    INSTALL_KUBE_PKGS
+}
+
+ALL() {
+    [ $INSTALL_DOCKER -ne 0 ] && $SCRIPT_DIR/install_docker.sh
+    [ $INSTALL_CONTAINERD -ne 0 ] && die "Not inmplemented - TODO: just add option to install_docker"
+
+    INSTALL_KUBE
+    INSTALL_CNI_CILIUM
+    KUBEADM_INIT
+    CREATE_JOIN_SCRIPT
+
+    ssh -o ConnectTimeout=1 worker uptime || {
+        echo "ssh to worker not configured - stopping here"
+    }
+
+    # Untested:
+    scp $JOIN_SH worker:/tmp/join.sh
+    ssh -q worker $SCRIPT_DIR/install_docker.sh
+    ssh -q worker sudo $0
+    ssh -q worker sudo sh -x /tmp/join.sh
+    sleep 5
+    kubectl get nodes
+    sleep 5
+    kubectl get nodes
+}
+
+KUBEADM_INIT() {
+    kubeadm init --pod-network-cidr=192.168.0.0/16 2>&1 | tee /tmp/kubeadm-init.op.$$ | tee $KUBEADM_INIT_OUT
+
+    sudo mkdir -p /home/student/.kube/
+    sudo cp /etc/kubernetes/admin.conf /home/student/.kube/config
+    sudo chown -R student:student /home/student/.kube/
+}
+
 ## Args: --------------------------------------------------------------------------
 
 while [ -n "$1" ]; do
     case $1 in
+        -A|--all)       INSTALL_DOCKER=1; ALL; exit $?;;
+        -d|--docker)   INSTALL_DOCKER=1;;
+        -cd|--containerd) INSTALL_CONTAINERD=1;;
         -cni|--cilium) INSTALL_CNI_CILIUM; exit $?  ;;
         -j|--join)     CREATE_JOIN_SCRIPT; exit $?  ;;
         -keep-sail)    HAPPY_SAILING_TEST "KEEP"; exit;;
@@ -216,13 +266,5 @@ echo "Installing Kubernetes packages for release $K8S_RELEASE"
 
 [ $( id -un ) = "root" ] || die "Must be run as root [USER=$(id -un)]"
 
-DISABLE_SWAP
-CONFIG_SYSCTL
-
-echo "Checking Docker is available:"
-sudo docker --version || die "Docker not accessible"
-
-INSTALL_KUBE_PRE_PKGS
-INSTALL_KUBE_PKGS
-
+INSTALL_KUBE
 
