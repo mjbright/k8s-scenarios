@@ -83,7 +83,7 @@ done
 
 ## Main: --------------------------------------------------------------------------------
 
-[ INSTALL_cp_wo -ne 0 ] && {
+[ $INSTALL_cp_wo -ne 0 ] && {
     CHECK_sudo_ssh
     DOWNLOAD_install_scripts
     INSTALL_cp_wo
