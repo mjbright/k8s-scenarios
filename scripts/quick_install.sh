@@ -13,7 +13,9 @@ CLEAN_ALL() {
   dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo; echo "[cp] Cleaning up ... Kubernetes"
     set -x
-    sudo kubeadm reset -f
+    sudo mkdir -p /root/tmp/
+    sudo kubeadm reset -f >/root/tmp/reset.log 2>&1
+
     sudo killall kube-apiserver kube-proxy
     sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     sudo apt-mark unhold kubectl kubelet kubeadm
