@@ -149,20 +149,20 @@ HAPPY_SAILING_TEST() {
 
    # Check taints:
    #kubectl taint node t-kube-2 node-role.kubernetes.io/master-
-   kubectl describe nodes | grep Taints: | grep -v '<none>' | grep No &&
+   sudo -u student kubectl describe nodes | grep Taints: | grep -v '<none>' | grep No &&
        die "Taint is still applied"
 
    # Create deployment & service:
-   kubectl create deploy ${TEST} --image mjbright/k8s-demo:1 --replicas 3
-   kubectl expose deploy ${TEST} --port 80
+   sudo -u student kubectl create deploy ${TEST} --image mjbright/k8s-demo:1 --replicas 3
+   sudo -u student kubectl expose deploy ${TEST} --port 80
 
    #kubectl get pods -l app=${TEST} -o wide --no-headers | head -1
-   kubectl rollout status deploy ${TEST}
+   sudo -u student kubectl rollout status deploy ${TEST}
 
    #kubectl get pods -l app=${TEST} -o wide --no-headers | head -1
-   IP=$( kubectl get pods -l app=${TEST} -o wide --no-headers | head -1 | awk '{ print $6; exit; }')
+   IP=$( sudo -u student kubectl get pods -l app=${TEST} -o wide --no-headers | head -1 | awk '{ print $6; exit; }')
    [ -z "$IP" ] && {
-       kubectl get pods -l app=${TEST} -o wide
+       sudo -u student kubectl get pods -l app=${TEST} -o wide
        die "Failed to get IP address for first pod"
    }
 
@@ -171,15 +171,15 @@ HAPPY_SAILING_TEST() {
    $CMD | grep "pod .*@$IP" ||
        die "Failed to curl to Pod at url $IP/1   [$CMD]"
 
-   SVC_IP=$( kubectl get svc ${TEST} --no-headers | awk '{ print $3; }' )
+   SVC_IP=$( sudo -u student kubectl get svc ${TEST} --no-headers | awk '{ print $3; }' )
    echo; echo "== [$HOST] Checking curl to '${TEST}' Service:"
    CMD="curl -sL $SVC_IP/1"
    $CMD | grep "pod .*@" ||
        die "Failed to curl to Pod at url $SVC_IP/1    [$CMD]"
 
    curl -sL $SVC_IP
-   kubectl get svc ${TEST}
-   kubectl get pods -l app=${TEST} -o wide
+   sudo -u student kubectl get svc ${TEST}
+   sudo -u student kubectl get pods -l app=${TEST} -o wide
 
    if [ "$KEEP" = "KEEP" ]; then
        #echo; echo "== [$HOST] =================== KEEPing ====================="
@@ -187,13 +187,13 @@ HAPPY_SAILING_TEST() {
    else
        #echo; echo "------------------- CLEANing ---------------------"
        echo; echo "== [$HOST] Cleaning up ${TEST} deployment & service:"
-       kubectl delete svc/${TEST} deploy/${TEST}
+       sudo -u student kubectl delete svc/${TEST} deploy/${TEST}
 
        WORKER_NODE=$( grep -m 3 kube /etc/hosts | tail -1 | awk '{ print $2; }' )
        [ -z "$WORKER_NODE" ] && WORKER_NODE=worker
 
        echo
-       if [ `kubectl get no | wc -l` = "2" ]; then
+       if [ `sudo -u student kubectl get no | wc -l` = "2" ]; then
            echo "Remember to join the 2nd node"
            echo "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"
            echo "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"
@@ -224,6 +224,7 @@ ALL() {
     SSH_KEYSCAN_WORKER
     INSTALL_KUBE
     KUBEADM_INIT
+    sudo -i student kubectl wait no cp --for=condition=Ready
     INSTALL_CNI_CILIUM
     CREATE_JOIN_SCRIPT
 
@@ -237,9 +238,9 @@ ALL() {
     ssh -q worker sudo $0
     ssh -q worker sudo sh -x /tmp/join.sh
     sleep 5
-    kubectl get nodes
+    sudo -u student kubectl get nodes
     sleep 5
-    kubectl get nodes
+    sudo -u student kubectl get nodes
 }
 
 KUBEADM_INIT() {
