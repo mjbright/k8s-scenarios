@@ -29,23 +29,24 @@ die() { echo "$0: die - $*" >&2; exit 1; }
 ## Func: --------------------------------------------------------------------------
 
 SSH_KEYSCAN_WORKER() {
-    echo; echo "== [$HOST] Setting known hosts for root access to worker"
+    echo "== [$HOST] Setting known hosts for root access to worker"
+    mkdir -p /root/.ssh
     ssh-keygen -R worker
     ssh-keyscan worker >> /root/.ssh/known_hosts
 }
 
 DISABLE_SWAP() {
-    echo; echo "== [$HOST] Checking swap is disabled  ..."
+    echo "== [$HOST] Checking swap is disabled  ..."
     local SWAP=$( swapon --show )
     [ -z "$SWAP" ] && { echo "Swap not enabled"; return; }
 
-    echo; echo "== [$HOST] Disabling swap ..."
+    echo "== [$HOST] Disabling swap ..."
     swapoff -a
     sed -i.bak 's/.*swap.*//' /etc/fstab
 }
 
 CONFIG_SYSCTL() {
-    echo; echo "== [$HOST] Configuring modules for kubernetes .."
+    echo "== [$HOST] Configuring modules for kubernetes .."
     cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf >/dev/null
 overlay
 br_netfilter
@@ -56,7 +57,7 @@ net.ipv4.ip_forward                 = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
-    echo; echo "== [$HOST] Configuring sysctl parameters for kubernetes .."
+    echo "== [$HOST] Configuring sysctl parameters for kubernetes .."
     sysctl --all    > ~/tmp/sysctl.all.before 2>&1
     sysctl --system > ~/tmp/sysctl.system.op 2>&1
     sysctl --all    > ~/tmp/sysctl.all.mid 2>&1
@@ -64,7 +65,7 @@ EOF
     sysctl --all 2>&1 | grep -E "^net.(bridge|ipv4)." > ~/tmp/sysctl.netparams
     sysctl --all 2>&1 > ~/tmp/sysctl.all.after
 
-    echo; echo "== [$HOST] Loading modules for kubernetes .."
+    echo "== [$HOST] Loading modules for kubernetes .."
     { 
         modprobe -c -C /etc/modules-load.d/containerd.conf
         modprobe overlay
@@ -75,16 +76,16 @@ EOF
 INSTALL_KUBE_PRE_PKGS() {
     local PKGS="apt-transport-https ca-certificates curl gnupg-agent vim tmux jq software-properties-common"
 
-    echo; echo "== [$HOST] Performing apt-get update ..."
+    echo "== [$HOST] Performing apt-get update ..."
     apt-get update >/dev/null 2>&1
-    echo; echo "== [$HOST] Installing packages: $PKGS ..."
+    echo "== [$HOST] Installing packages: $PKGS ..."
     apt-get install -y $PKFGS >/dev/null 2>&1
 }
 
 INSTALL_KUBE_PKGS() {
     local PKGS="kubelet kubeadm kubectl"
 
-    echo; echo "== [$HOST] Obtaining Kubernetes package GPG key..."
+    echo "== [$HOST] Obtaining Kubernetes package GPG key..."
     mkdir -p -m 755 /etc/apt/keyrings
 
     [ -f  /etc/apt/keyrings/kubernetes-apt-keyring.gpg ] &&
@@ -95,16 +96,16 @@ INSTALL_KUBE_PKGS() {
 	sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg ||
 	die "Failed to add Kubernetes package key"
 
-    echo; echo "== [$HOST] Creating kubernetes.list apt sources file..."
+    echo "== [$HOST] Creating kubernetes.list apt sources file..."
     echo $REPO_LINE | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-    echo; echo "== [$HOST] Performing apt-get update ..."
+    echo "== [$HOST] Performing apt-get update ..."
     apt-get update >/dev/null 2>&1
 
-    echo; echo "== [$HOST] Installing packages: $PKGS ..."
+    echo "== [$HOST] Installing packages: $PKGS ..."
     apt-get install -y $PKGS >/dev/null 2>&1
 
-    echo; echo "== [$HOST] Marking packages as 'hold': $PKGS ..."
+    echo "== [$HOST] Marking packages as 'hold': $PKGS ..."
     echo "-- apt-mark hold $PKGS"
     apt-mark hold $PKGS
 }
@@ -117,7 +118,7 @@ CREATE_JOIN_SCRIPT() {
     chmod +x $JOIN_SH
     sudo chown student:student $JOIN_SH
 
-    echo; echo "== [$HOST] Created script TO BE RUN ON WORKER:"
+    echo "== [$HOST] Created script TO BE RUN ON WORKER:"
     set -x
     ls -al $JOIN_SH
     cat $JOIN_SH
@@ -166,13 +167,13 @@ HAPPY_SAILING_TEST() {
        die "Failed to get IP address for first pod"
    }
 
-   echo; echo "== [$HOST] Checking curl to first '${TEST}' Pod:"
+   echo "== [$HOST] Checking curl to first '${TEST}' Pod:"
    CMD="curl -sL $IP/1"
    $CMD | grep "pod .*@$IP" ||
        die "Failed to curl to Pod at url $IP/1   [$CMD]"
 
    SVC_IP=$( sudo -u student kubectl get svc ${TEST} --no-headers | awk '{ print $3; }' )
-   echo; echo "== [$HOST] Checking curl to '${TEST}' Service:"
+   echo "== [$HOST] Checking curl to '${TEST}' Service:"
    CMD="curl -sL $SVC_IP/1"
    $CMD | grep "pod .*@" ||
        die "Failed to curl to Pod at url $SVC_IP/1    [$CMD]"
@@ -182,11 +183,11 @@ HAPPY_SAILING_TEST() {
    sudo -u student kubectl get pods -l app=${TEST} -o wide
 
    if [ "$KEEP" = "KEEP" ]; then
-       #echo; echo "== [$HOST] =================== KEEPing ====================="
+       #echo "== [$HOST] =================== KEEPing ====================="
        ABS_NO_PROMPTS=0 ALL_PROMPTS=1 PROMPTS=1 PRESS ""
    else
-       #echo; echo "------------------- CLEANing ---------------------"
-       echo; echo "== [$HOST] Cleaning up ${TEST} deployment & service:"
+       #echo "------------------- CLEANing ---------------------"
+       echo "== [$HOST] Cleaning up ${TEST} deployment & service:"
        sudo -u student kubectl delete svc/${TEST} deploy/${TEST}
 
        WORKER_NODE=$( grep -m 3 kube /etc/hosts | tail -1 | awk '{ print $2; }' )
