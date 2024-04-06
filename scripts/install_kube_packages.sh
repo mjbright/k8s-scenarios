@@ -234,7 +234,7 @@ ALL() {
     echo "kubectl wait no cp --for=condition=Ready"
     sudo -u student kubectl wait no cp --for=condition=Ready
     #kubectl get no
-    sudo -u student kubectl get no || die "Node init failed"
+    sudo -u student kubectl get no | grep "cp " || die "Node init failed"
 
     INSTALL_CNI_CILIUM
     CREATE_JOIN_SCRIPT
