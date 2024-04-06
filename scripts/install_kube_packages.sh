@@ -122,6 +122,7 @@ CREATE_JOIN_SCRIPT() {
     set -x
     ls -al $JOIN_SH
     cat $JOIN_SH
+    chown -R student:student $JOIN_SH
     set +x
 }
 
@@ -240,7 +241,7 @@ ALL() {
     }
 
     # Untested:
-    scp $JOIN_SH worker:/tmp/join.sh
+    sudo -u student scp $JOIN_SH worker:/tmp/join.sh
     sudo -u student ssh -q worker $SCRIPT_DIR/install_docker.sh
     sudo -u student ssh -q worker sudo $0
     sudo -u student ssh -q worker sudo sh -x /tmp/join.sh
