@@ -227,6 +227,8 @@ ALL() {
     SSH_KEYSCAN_WORKER
     INSTALL_KUBE
     ps aux | grep kube
+
+    echo
     KUBEADM_INIT
 
     echo "kubectl wait no cp --for=condition=Ready"
