@@ -6,6 +6,8 @@ INSTALL_DOCKER=${INSTALL_DOCKER:-1}
 # Based on https://docs.docker.com/engine/install/
 # - dropped ansible due to 'NoneType' errors !!
 
+HOST=$( hostname )
+
 ## == Func: ======================================================================
 
 die() { echo "$0: die - $*" >&2; exit 1; }
@@ -21,7 +23,7 @@ case $ARCH in
 esac
 
 CLEAN() {
-    echo; echo "==== Removing Docker Packages, Key & Repo"
+    echo; echo "== [$HOST] ==== Removing Docker Packages, Key & Repo"
 
     PKGS=""
     for PKG in docker.io docker-compose docker-compose-v2 docker-doc podman-docker; do
@@ -42,7 +44,7 @@ CLEAN() {
 ADD_DOCKER_REPO() {
     [ -f /etc/apt/sources.list.d/docker.list ] && return
 
-    echo; echo "==== Adding Docker Key"
+    echo; echo "== [$HOST] ==== Adding Docker Key"
     # Add Docker's official GPG key:
     {
       sudo apt-get update
@@ -52,7 +54,7 @@ ADD_DOCKER_REPO() {
       sudo chmod a+r /etc/apt/keyrings/docker.gpg
     } > ~/tmp/docker.keys.log 2>&1
 
-    echo; echo "==== Adding Docker Repo"
+    echo; echo "== [$HOST] ==== Adding Docker Repo"
     # Add the repository to Apt sources:
     {
       echo \
@@ -65,11 +67,11 @@ ADD_DOCKER_REPO() {
 
 INSTALL_DOCKER() {
     if [ $INSTALL_DOCKER -ne 0 ]; then
-        echo; echo "==== Installing Docker + Containerd"
+        echo; echo "== [$HOST] ==== Installing Docker + Containerd"
         {
           sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
         } > ~/tmp/docker.install.log 2>&1
-        echo; echo "==== Configuring Docker"
+        echo; echo "== [$HOST] ==== Configuring Docker"
         sudo tee /etc/docker/daemon.json >/dev/null <<EOF
 {
     "exec-opts": ["native.cgroupdriver=systemd"],
@@ -82,7 +84,7 @@ INSTALL_DOCKER() {
 EOF
 
     else 
-        echo; echo "==== Installing Containerd"
+        echo; echo "== [$HOST] ==== Installing Containerd"
         {
           sudo apt-get install -y containerd.io
         } > ~/tmp/containerd.install.log 2>&1
@@ -102,11 +104,11 @@ ENABLE_DOCKER_USERS() {
     USERS=$*
     [ $INSTALL_DOCKER -eq 0 ] && return 0
 
-    echo; echo "==== Check Docker OK as root:"
+    echo; echo "== [$HOST] ==== Check Docker OK as root:"
     sudo docker ps
 
     for _USER in $USERS; do
-        echo; echo "==== Check Docker OK as $_USER:"
+        echo; echo "== [$HOST] ==== Check Docker OK as $_USER:"
 
         echo "-- sudo usermod -aG docker $_USER"
         sudo usermod -aG docker $_USER

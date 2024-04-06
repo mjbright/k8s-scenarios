@@ -64,7 +64,7 @@ CHECK_sudo_ssh() {
 }
 
 INSTALL_cp_wo() {
-    ~/scripts/install_kube_packages.sh -A
+    sudo ~/scripts/install_kube_packages.sh -A
 }
 
 ## Args: --------------------------------------------------------------------------------
