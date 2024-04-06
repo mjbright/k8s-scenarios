@@ -236,7 +236,7 @@ ALL() {
     INSTALL_CNI_CILIUM
     CREATE_JOIN_SCRIPT
 
-    ssh -o ConnectTimeout=1 worker uptime || {
+    sudo -u student ssh -o ConnectTimeout=1 worker uptime || {
         echo "ssh to worker not configured - stopping here"
     }
 
