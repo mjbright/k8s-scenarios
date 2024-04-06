@@ -18,36 +18,43 @@ CLEAN_ALL() {
     sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     sudo apt-mark unhold kubectl kubelet kubeadm
     sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
-
+    set +x
+  }
+  echo; echo "== [worker] checking presence of Kubernetes packages"
+  ssh worker dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo; echo "[worker] Cleaning up ... Kubernetes"
-    SSH sudo kubeadm reset -f
-    SSH sudo killall kube-apiserver kube-proxy
-    SSH sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
-    SSH sudo apt-mark unhold kubectl kubelet kubeadm
-    SSH sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
+    set -x
+    ssh worker sudo kubeadm reset -f
+    ssh worker sudo killall kube-apiserver kube-proxy
+    ssh worker sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
+    ssh worker sudo apt-mark unhold kubectl kubelet kubeadm
+    ssh worker sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
     set +x
   }
 
   echo; echo "== [$HOST] checking presence of Docker packages"
   dpkg -l | grep ".i  *docker" 2>&1 && {
-    # Worker first based on cp node package names:
-    echo; echo "[worker] Cleaning up ... Docker"
-    SSH sudo apt-get remove -y $( dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
-
     echo; echo "[cp] Cleaning up ... Docker"
     sudo apt-get remove -y $( dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
   }
+  echo; echo "== [worker] checking presence of Docker packages"
+  ssh worker dpkg -l | grep ".i  *docker" 2>&1 && {
+    echo; echo "[worker] Cleaning up ... Docker"
+    ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
+  }
 
-  echo; echo "== [$HOST] checking presence of Containerd packages"
+  echo; echo "== [cp] checking presence of Containerd packages"
   dpkg -l | grep ".i  *containerd" 2>&1 && {
+    echo; echo "[cp] Cleaning up ... Containerd"
+    sudo apt-get remove -y $( dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
+  }
+  echo; echo "== [worker] checking presence of Containerd packages"
+  ssh worker dpkg -l | grep ".i  *containerd" 2>&1 && {
     # Worker first based on cp node package names:
 
     echo; echo "[worker] Cleaning up ... Containerd"
-    SSH sudo apt-get remove -y $( dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
-
-    echo; echo "[cp] Cleaning up ... Containerd"
-    sudo apt-get remove -y $( dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
-    }
+    ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
+  }
 }
 
 DOWNLOAD_install_scripts() {
