@@ -58,6 +58,7 @@ CLEAN_ALL() {
     ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
   }
 
+  echo
   echo "== [cp]:"
   dpkg -l | grep -E "docker|kube|containerd"
   echo "== [worker]:"
