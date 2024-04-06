@@ -58,7 +58,7 @@ DOWNLOAD_install_scripts() {
 
     chmod +x ~/scripts/*.sh
 
-    scp ~/scripts/install_*.sh worker:scripts/
+    scp ~/scripts/install_docker.sh scp ~/scripts/install_kube_packages.sh worker:scripts/
 }
 
 CHECK_sudo_ssh() {
