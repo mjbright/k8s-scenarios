@@ -63,9 +63,9 @@ CLEAN_ALL() {
 }
 
 DOWNLOAD_install_scripts() {
-    wget -qO ~/scripts/install_docker.sh \
+    wget --no-cache -qO ~/scripts/install_docker.sh \
         https://raw.githubusercontent.com/mjbright/k8s-scenarios/master/scripts/install_docker.sh
-    wget -qO ~/scripts/install_kube_packages.sh \
+    wget --no-cache -qO ~/scripts/install_kube_packages.sh \
         https://raw.githubusercontent.com/mjbright/k8s-scenarios/master/scripts/install_kube_packages.sh
 
     chmod +x ~/scripts/*.sh
