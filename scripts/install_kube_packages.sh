@@ -31,7 +31,7 @@ die() { echo "$0: die - $*" >&2; exit 1; }
 SSH_KEYSCAN_WORKER() {
     echo; echo "== [$HOST] Setting known hosts for root access to worker"
     ssh-keygen -R worker
-    ssh-keyscan worker >> /root/ssh/.known_hosts
+    ssh-keyscan worker >> /root/.ssh/known_hosts
 }
 
 DISABLE_SWAP() {
