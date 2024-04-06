@@ -55,6 +55,11 @@ CLEAN_ALL() {
     echo; echo "[worker] Cleaning up ... Containerd"
     ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
   }
+
+  echo; echo "== [cp]:"
+  dpkg -l | grep -E "docker|kube|containerd"
+  echo; echo "== [worker]:"
+  ssh worker dpkg -l | grep -E "docker|kube|containerd"
 }
 
 DOWNLOAD_install_scripts() {
