@@ -234,9 +234,9 @@ ALL() {
 
     # Untested:
     scp $JOIN_SH worker:/tmp/join.sh
-    ssh -q worker $SCRIPT_DIR/install_docker.sh
-    ssh -q worker sudo $0
-    ssh -q worker sudo sh -x /tmp/join.sh
+    sudo -u student ssh -q worker $SCRIPT_DIR/install_docker.sh
+    sudo -u student ssh -q worker sudo $0
+    sudo -u student ssh -q worker sudo sh -x /tmp/join.sh
     sleep 5
     sudo -u student kubectl get nodes
     sleep 5
