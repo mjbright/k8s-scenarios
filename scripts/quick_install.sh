@@ -16,9 +16,9 @@ CLEAN_ALL() {
     sudo mkdir -p /root/tmp/
     sudo kubeadm reset -f >/root/tmp/reset.log 2>&1
 
-    sudo killall kube-apiserver kube-proxy
+    sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
     sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
-    sudo apt-mark unhold kubectl kubelet kubeadm
+    sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
     sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
     set +x
   }
@@ -26,10 +26,10 @@ CLEAN_ALL() {
   ssh worker dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo "[worker] Cleaning up ... Kubernetes"
     set -x
-    ssh worker sudo kubeadm reset -f
-    ssh worker sudo killall kube-apiserver kube-proxy
+    ssh worker sudo kubeadm reset -f >/root/tmp/reset.worker.log 2>&1
+    ssh worker sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
     ssh worker sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
-    ssh worker sudo apt-mark unhold kubectl kubelet kubeadm
+    ssh worker sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
     ssh worker sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
     set +x
   }
