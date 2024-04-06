@@ -45,11 +45,37 @@ CLEAN_ALL() {
     }
 }
 
+DOWNLOAD_install_scripts() {
+    wget -qO ~/scripts/install_docker.sh \
+        https://raw.githubusercontent.com/mjbright/k8s-scenarios/master/scripts/install_docker.sh
+    wget -qO ~/scripts/install_kube_packages.sh \
+        https://raw.githubusercontent.com/mjbright/k8s-scenarios/master/scripts/install_kube_packages.sh
+
+    chmod +x ~/scripts/*.sh
+
+    scp ~/scripts/install_*.sh worker:scripts/
+}
+
+CHECK_sudo_ssh() {
+    echo "Checking local sudo:"
+    sudo ls /tmp >/dev/null 2>&1 || die "local sudo test failed"
+    echo "Checking remote sudo:"
+    ssh worker sudo ls /tmp >/dev/null 2>&1 || die "remote sudo test failed"
+}
+
+INSTALL_cp_wo() {
+    ~/scripts/install_kube_packages.sh -A
+}
+
 ## Args: --------------------------------------------------------------------------------
+
+INSTALL_cp_wo=0
 
 while [ $# -gt 0 ]; do
     case $1 in
         -c|--clean) CLEAN_ALL; exit $?;;
+        -i|--install) INSTALL_cp_wo=1;;
+
         *) die "Unknown option: '$1'";;
     esac
     shift
@@ -57,4 +83,9 @@ done
 
 ## Main: --------------------------------------------------------------------------------
 
+[ INSTALL_cp_wo -ne 0 ] && {
+    CHECK_sudo_ssh
+    DOWNLOAD_install_scripts
+    INSTALL_cp_wo
+}
 
