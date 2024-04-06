@@ -216,8 +216,8 @@ ALL() {
     [ $INSTALL_CONTAINERD -ne 0 ] && die "Not inmplemented - TODO: just add option to install_docker"
 
     INSTALL_KUBE
-    INSTALL_CNI_CILIUM
     KUBEADM_INIT
+    INSTALL_CNI_CILIUM
     CREATE_JOIN_SCRIPT
 
     ssh -o ConnectTimeout=1 worker uptime || {
