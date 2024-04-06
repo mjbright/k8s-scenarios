@@ -140,7 +140,8 @@ INSTALL_CNI_CILIUM() {
     sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
     rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 
-    cilium install --version $CILIUM_RELEASE
+    # Run as student user to pickup ~/.kube/config:
+    sudo -u student cilium install --version $CILIUM_RELEASE
 }
 
 HAPPY_SAILING_TEST() {
@@ -225,7 +226,12 @@ ALL() {
     SSH_KEYSCAN_WORKER
     INSTALL_KUBE
     KUBEADM_INIT
+
+    echo "kubectl wait no cp --for=condition=Ready"
     sudo -u student kubectl wait no cp --for=condition=Ready
+    kubectl get no
+    sudo -u student kubectl get no
+
     INSTALL_CNI_CILIUM
     CREATE_JOIN_SCRIPT
 
