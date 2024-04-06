@@ -246,9 +246,9 @@ ALL() {
 KUBEADM_INIT() {
     kubeadm init --pod-network-cidr=192.168.0.0/16 2>&1 | tee /tmp/kubeadm-init.op.$$ | tee $KUBEADM_INIT_OUT
 
-    sudo mkdir -p /home/student/.kube/
-    sudo cp /etc/kubernetes/admin.conf /home/student/.kube/config
-    sudo chown -R student:student /home/student/.kube/
+    mkdir -p /home/student/.kube/
+    cp /etc/kubernetes/admin.conf /home/student/.kube/config
+    chown -R student:student /home/student/.kube/
 }
 
 ## Args: --------------------------------------------------------------------------
