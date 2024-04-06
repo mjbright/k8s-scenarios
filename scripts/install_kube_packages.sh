@@ -28,6 +28,12 @@ die() { echo "$0: die - $*" >&2; exit 1; }
 
 ## Func: --------------------------------------------------------------------------
 
+SSH_KEYSCAN_WORKER() {
+    echo; echo "== [$HOST] Setting known hosts for root access to worker"
+    ssh-keygen -R worker
+    ssh-keyscan worker >> /root/ssh/.known_hosts
+}
+
 DISABLE_SWAP() {
     echo; echo "== [$HOST] Checking swap is disabled  ..."
     local SWAP=$( swapon --show )
@@ -215,6 +221,7 @@ ALL() {
     [ $INSTALL_DOCKER -ne 0 ] && $SCRIPT_DIR/install_docker.sh
     [ $INSTALL_CONTAINERD -ne 0 ] && die "Not inmplemented - TODO: just add option to install_docker"
 
+    SSH_KEYSCAN_WORKER
     INSTALL_KUBE
     KUBEADM_INIT
     INSTALL_CNI_CILIUM
