@@ -224,7 +224,7 @@ ALL() {
     SSH_KEYSCAN_WORKER
     INSTALL_KUBE
     KUBEADM_INIT
-    sudo -i student kubectl wait no cp --for=condition=Ready
+    sudo -u student kubectl wait no cp --for=condition=Ready
     INSTALL_CNI_CILIUM
     CREATE_JOIN_SCRIPT
 
