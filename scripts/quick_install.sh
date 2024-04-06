@@ -16,6 +16,11 @@ CLEAN_ALL() {
     sudo mkdir -p /root/tmp/
     sudo kubeadm reset -f >/root/tmp/reset.log 2>&1
 
+    sudo systemctl stop kubelet
+    sudo systemctl stop docker
+    sudo iptables -F && sudo iptables -t nat -F && sudo iptables -t mangle -F && sudo iptables -X
+    sudo swapoff -a
+
     sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
     sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
