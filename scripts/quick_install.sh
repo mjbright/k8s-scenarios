@@ -86,6 +86,8 @@ INSTALL_cp_wo() {
 
 ## Args: --------------------------------------------------------------------------------
 
+[ $( id -un ) = "root" ] && die "Run as non-root"
+
 INSTALL_cp_wo=0
 
 while [ $# -gt 0 ]; do
