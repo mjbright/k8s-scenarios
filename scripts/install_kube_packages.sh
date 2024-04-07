@@ -240,6 +240,7 @@ ALL() {
 
     echo; INSTALL_CNI_CILIUM
     echo; CREATE_JOIN_SCRIPT
+    UNTAINT_NODES
 
     sudo -u student ssh -o ConnectTimeout=1 worker uptime || {
         echo "ssh to worker not configured - stopping here"
@@ -261,7 +262,8 @@ ALL() {
 }
 
 KUBEADM_INIT() {
-    local INIT_CMD="kubeadm init --pod-network-cidr=192.168.0.0/16"
+    local INIT_CMD="kubeadm init --pod-network-cidr=192.168.0.0/16 --cri-socket unix:///var/run/containerd/containerd.sock"
+
     #kubeadm init --pod-network-cidr=192.168.0.0/16 2>&1 | tee /tmp/kubeadm-init.op.$$ | tee $KUBEADM_INIT_OUT
 
     echo; echo "== $INIT_CMD    [output saved to $KUBEADM_INIT_OUT]"
@@ -271,6 +273,11 @@ KUBEADM_INIT() {
     mkdir -p /home/student/.kube/
     cp /etc/kubernetes/admin.conf /home/student/.kube/config
     chown -R student:student /home/student/.kube/
+}
+
+UNTAINT_NODES() {
+    echo "== Untainiing cp Node"
+    sudo -u student kubectl taint node --all node-role.kubernetes.io/control-plane- >/dev/null 2>&1
 }
 
 ## Args: --------------------------------------------------------------------------
