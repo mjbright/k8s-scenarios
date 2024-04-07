@@ -261,8 +261,12 @@ ALL() {
 }
 
 KUBEADM_INIT() {
-    kubeadm init --pod-network-cidr=192.168.0.0/16 2>&1 | tee /tmp/kubeadm-init.op.$$ | tee $KUBEADM_INIT_OUT
+    #kubeadm init --pod-network-cidr=192.168.0.0/16 2>&1 | tee /tmp/kubeadm-init.op.$$ | tee $KUBEADM_INIT_OUT
+    local INIT_CMD="kubeadm init --pod-network-cidr=192.168.0.0/16"
+    echo; echo "== $INIT_CMD"
+    $INIT_CMD 2>&1 | tee /tmp/kubeadm-init.op.$$ > $KUBEADM_INIT_OUT
 
+    echo "== Copying admin.conf to /home/student/.kube/config"
     mkdir -p /home/student/.kube/
     cp /etc/kubernetes/admin.conf /home/student/.kube/config
     chown -R student:student /home/student/.kube/
