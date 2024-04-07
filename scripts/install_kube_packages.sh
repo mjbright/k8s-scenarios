@@ -226,7 +226,7 @@ ALL() {
 
     SSH_KEYSCAN_WORKER
     INSTALL_KUBE
-    ps aux | grep kube | grep -v grep | grep -v kube_install_packages
+    ps aux | grep kube | grep -v grep | grep -v install_kube_packages.sh
 
     echo
     KUBEADM_INIT
@@ -242,11 +242,11 @@ ALL() {
     echo; CREATE_JOIN_SCRIPT
     UNTAINT_NODES
 
+    echo "== checking connectivity to worker node"
     sudo -u student ssh -o ConnectTimeout=1 worker uptime || {
         echo "ssh to worker not configured - stopping here"
     }
 
-    # Untested:
     sudo -u student scp $JOIN_SH worker:/tmp/join.sh
     sudo -u student ssh -q worker $SCRIPT_DIR/install_docker.sh
     sudo -u student ssh -q worker sudo $0
@@ -276,7 +276,7 @@ KUBEADM_INIT() {
 }
 
 UNTAINT_NODES() {
-    echo "== Untainiing cp Node"
+    echo "== Untainting cp Node"
     sudo -u student kubectl taint node --all node-role.kubernetes.io/control-plane- >/dev/null 2>&1
 }
 

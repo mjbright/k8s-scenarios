@@ -14,7 +14,7 @@ CLEAN_ALL() {
     echo "[cp] Cleaning up ... Kubernetes"
     #set -x
     sudo mkdir -p /root/tmp/
-    sudo kubeadm reset -f 2>&1 | sudo tee /root/tmp/reset.log
+    sudo kubeadm reset -f 2>&1 | sudo tee /root/tmp/reset.log >/dev/null
 
     sudo systemctl stop kubelet
     sudo systemctl stop docker
@@ -31,7 +31,7 @@ CLEAN_ALL() {
   ssh worker dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo "[worker] Cleaning up ... Kubernetes"
     #set -x
-    ssh worker sudo kubeadm reset -f 2>&1 | sudo tee /root/tmp/reset.worker.log
+    ssh worker sudo kubeadm reset -f 2>&1 | sudo tee /root/tmp/reset.worker.log >/dev/null
     ssh worker sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
     ssh worker sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     ssh worker sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
