@@ -9,12 +9,12 @@ die() { echo "$0: die - $*" >&2; exit 1; }
 CLEAN_ALL() {
   echo; echo "Cleaning up any current Kubernetes/Docker/Containerd installation:"
 
-  echo "== [$HOST] checking presence of Kubernetes packages"
+  echo "== [$HOST] BEFORE - checking presence of Kubernetes packages"
   dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo "[cp] Cleaning up ... Kubernetes"
     #set -x
     sudo mkdir -p /root/tmp/
-    sudo kubeadm reset -f >/root/tmp/reset.log 2>&1
+    sudo kubeadm reset -f 2>&1 | tee /root/tmp/reset.log
 
     sudo systemctl stop kubelet
     sudo systemctl stop docker
@@ -27,11 +27,11 @@ CLEAN_ALL() {
     sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
     #set +x
   }
-  echo "== [worker] checking presence of Kubernetes packages"
+  echo "== [worker] BEFORE - checking presence of Kubernetes packages"
   ssh worker dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo "[worker] Cleaning up ... Kubernetes"
     #set -x
-    ssh worker sudo kubeadm reset -f >/root/tmp/reset.worker.log 2>&1
+    ssh worker sudo kubeadm reset -f 2>&1 | tee /root/tmp/reset.worker.log
     ssh worker sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
     ssh worker sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     ssh worker sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
@@ -39,24 +39,24 @@ CLEAN_ALL() {
     #set +x
   }
 
-  echo "== [$HOST] checking presence of Docker packages"
-  dpkg -l | grep ".i  *docker" 2>&1 && {
+  echo "== [$HOST] BEFORE - checking presence of Docker packages"
+  dpkg -l | grep -q ".i  *docker" 2>&1 && {
     echo "[cp] Cleaning up ... Docker"
     sudo apt-get remove -y $( dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
   }
-  echo "== [worker] checking presence of Docker packages"
-  ssh worker dpkg -l | grep ".i  *docker" 2>&1 && {
+  echo "== [worker] BEFORE - checking presence of Docker packages"
+  ssh worker dpkg -l | grep -q ".i  *docker" 2>&1 && {
     echo "[worker] Cleaning up ... Docker"
     ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
   }
 
-  echo "== [cp] checking presence of Containerd packages"
-  dpkg -l | grep ".i  *containerd" 2>&1 && {
+  echo "== [cp] BEFORE - checking presence of Containerd packages"
+  dpkg -l | grep -q ".i  *containerd" 2>&1 && {
     echo "[cp] Cleaning up ... Containerd"
     sudo apt-get remove -y $( dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
   }
-  echo "== [worker] checking presence of Containerd packages"
-  ssh worker dpkg -l | grep ".i  *containerd" 2>&1 && {
+  echo "== [worker] BEFORE - checking presence of Containerd packages"
+  ssh worker dpkg -l | grep -q ".i  *containerd" 2>&1 && {
     # Worker first based on cp node package names:
 
     echo "[worker] Cleaning up ... Containerd"
@@ -64,9 +64,9 @@ CLEAN_ALL() {
   }
 
   echo
-  echo "== [cp]:"
+  echo "== [cp]: Packages AFTER:"
   dpkg -l | grep -E "docker|kube|containerd"
-  echo "== [worker]:"
+  echo "== [worker]: Packages AFTER:"
   ssh worker dpkg -l | grep -E "docker|kube|containerd"
 }
 
