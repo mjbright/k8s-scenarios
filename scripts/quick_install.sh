@@ -12,7 +12,7 @@ CLEAN_ALL() {
   echo "== [$HOST] checking presence of Kubernetes packages"
   dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo "[cp] Cleaning up ... Kubernetes"
-    set -x
+    #set -x
     sudo mkdir -p /root/tmp/
     sudo kubeadm reset -f >/root/tmp/reset.log 2>&1
 
@@ -25,18 +25,18 @@ CLEAN_ALL() {
     sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
     sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
-    set +x
+    #set +x
   }
   echo "== [worker] checking presence of Kubernetes packages"
   ssh worker dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
     echo "[worker] Cleaning up ... Kubernetes"
-    set -x
+    #set -x
     ssh worker sudo kubeadm reset -f >/root/tmp/reset.worker.log 2>&1
     ssh worker sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
     ssh worker sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
     ssh worker sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
     ssh worker sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
-    set +x
+    #set +x
   }
 
   echo "== [$HOST] checking presence of Docker packages"

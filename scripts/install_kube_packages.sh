@@ -231,13 +231,15 @@ ALL() {
     echo
     KUBEADM_INIT
 
-    echo "kubectl wait no cp --for=condition=Ready"
+    echo; echo "==kubectl wait no cp --for=condition=Ready"
     sudo -u student kubectl wait no cp --for=condition=Ready
-    #kubectl get no
+
+    echo; echo "== sudo -u student kubectl get no"
+    sudo -u student kubectl get no
     sudo -u student kubectl get no | grep "cp " || die "Node init failed"
 
-    INSTALL_CNI_CILIUM
-    CREATE_JOIN_SCRIPT
+    echo; INSTALL_CNI_CILIUM
+    echo; CREATE_JOIN_SCRIPT
 
     sudo -u student ssh -o ConnectTimeout=1 worker uptime || {
         echo "ssh to worker not configured - stopping here"
@@ -248,9 +250,13 @@ ALL() {
     sudo -u student ssh -q worker $SCRIPT_DIR/install_docker.sh
     sudo -u student ssh -q worker sudo $0
     sudo -u student ssh -q worker sudo sh -x /tmp/join.sh
-    sleep 5
-    sudo -u student kubectl get nodes
-    sleep 5
+
+    echo; echo "== Waiting for Node to be Ready ..."
+    while sudo -u student kubectl get nodes | grep -q NotReady; do
+        echo -n "."
+        sleep 5
+    done
+    echo
     sudo -u student kubectl get nodes
 }
 
