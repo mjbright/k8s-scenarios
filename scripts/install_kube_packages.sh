@@ -31,8 +31,8 @@ die() { echo "$0: die - $*" >&2; exit 1; }
 SSH_KEYSCAN_WORKER() {
     echo "== [$HOST] Setting known hosts for root access to worker"
     mkdir -p /root/.ssh
-    ssh-keygen -R worker
-    ssh-keyscan worker >> /root/.ssh/known_hosts
+    ssh-keygen -R worker                          >/dev/null 2>&1
+    ssh-keyscan worker >> /root/.ssh/known_hosts 2>/dev/null
 }
 
 DISABLE_SWAP() {
@@ -91,7 +91,7 @@ INSTALL_KUBE_PKGS() {
     [ -f  /etc/apt/keyrings/kubernetes-apt-keyring.gpg ] &&
         rm /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-    echo "curl -fsSL $KEY_URL | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+    #echo "curl -fsSL $KEY_URL | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
     curl -fsSL $KEY_URL |
 	sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg ||
 	die "Failed to add Kubernetes package key"
@@ -106,8 +106,8 @@ INSTALL_KUBE_PKGS() {
     apt-get install -y $PKGS >/dev/null 2>&1
 
     echo "== [$HOST] Marking packages as 'hold': $PKGS ..."
-    echo "-- apt-mark hold $PKGS"
-    apt-mark hold $PKGS
+    #echo "-- apt-mark hold $PKGS"
+    apt-mark hold $PKGS >/dev/null 2>&1
 }
 
 CREATE_JOIN_SCRIPT() {
@@ -226,7 +226,7 @@ ALL() {
 
     SSH_KEYSCAN_WORKER
     INSTALL_KUBE
-    ps aux | grep kube
+    ps aux | grep kube | grep -v grep | grep -v kube_install_packages
 
     echo
     KUBEADM_INIT
