@@ -6,9 +6,9 @@ INSTALL_CONTAINERD=${INSTALL_CONTAINERD:-0}
 K8S_RELEASE=${K8S_RELEASE:-v1.29}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
-echo "$0: WORKERS=$WORKERS"
+## echo "$0: WORKERS=$WORKERS"
 export WORKERS=${WORKERS:-worker}
-echo "$0: WORKERS=$WORKERS"
+## echo "$0: WORKERS=$WORKERS"
 
 echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
 
@@ -154,6 +154,11 @@ INSTALL_CNI_CILIUM() {
 HAPPY_SAILING_TEST() {
    KEEP="$1"; shift
 
+   NUM_WORKERS=$( echo $WORKERS | wc -w )
+   ## echo "NUM_WORKERS='$NUM_WORKERS'"
+   let REPLICAS="3*(1 + $NUM_WORKERS)"
+   ## echo "REPLICAS='$REPLICAS'"
+
    TEST="test-$(( $RANDOM  % 100 ))"
 
    # Check taints:
@@ -162,7 +167,7 @@ HAPPY_SAILING_TEST() {
        die "Taint is still applied"
 
    # Create deployment & service:
-   sudo -u student kubectl create deploy ${TEST} --image mjbright/k8s-demo:1 --replicas 3
+   sudo -u student kubectl create deploy ${TEST} --image mjbright/k8s-demo:1 --replicas $REPLICAS
    sudo -u student kubectl expose deploy ${TEST} --port 80
 
    #kubectl get pods -l app=${TEST} -o wide --no-headers | head -1
@@ -175,16 +180,18 @@ HAPPY_SAILING_TEST() {
        die "Failed to get IP address for first pod"
    }
 
-   echo "== [$HOST] Checking curl to first '${TEST}' Pod:"
+   echo; echo "== [$HOST] Checking curl to first '${TEST}' Pod:"
    CMD="curl -sL $IP/1"
    $CMD | grep "pod .*@$IP" ||
        die "Failed to curl to Pod at url $IP/1   [$CMD]"
 
    SVC_IP=$( sudo -u student kubectl get svc ${TEST} --no-headers | awk '{ print $3; }' )
-   echo "== [$HOST] Checking curl to '${TEST}' Service:"
+   echo; echo "== [$HOST] Checking repeated curls to '${TEST}' Service:"
    CMD="curl -sL $SVC_IP/1"
-   $CMD | grep "pod .*@" ||
-       die "Failed to curl to Pod at url $SVC_IP/1    [$CMD]"
+   for I in $( seq $REPLICAS ); do
+       $CMD | grep "pod .*@" ||
+           die "Failed to curl to Pod at url $SVC_IP/1    [$CMD]"
+    done
 
    curl -sL $SVC_IP
    sudo -u student kubectl get svc ${TEST}
