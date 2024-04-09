@@ -6,7 +6,9 @@ INSTALL_CONTAINERD=${INSTALL_CONTAINERD:-0}
 K8S_RELEASE=${K8S_RELEASE:-v1.29}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
+echo "$0: WORKERS=$WORKERS"
 export WORKERS=${WORKERS:-worker}
+echo "$0: WORKERS=$WORKERS"
 
 echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
 
