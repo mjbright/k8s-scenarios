@@ -8,7 +8,7 @@ CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
 export WORKERS=${WORKERS:-worker}
 
-echo "Running $0 on Nodes cp, $WORKERS"
+echo "$0: Operating on Nodes: cp, $( echo $WORKERS | sed -e 's/ /, /g' )"
 
 SCRIPT_DIR=$( dirname $( readlink -f $0 ))
 
@@ -246,6 +246,7 @@ ALL() {
     echo; CREATE_JOIN_SCRIPT
     UNTAINT_NODES
 
+    echo; echo "== Installing Docker/Kubernetes on worker Nodes: $WORKERS"
     for WORKER in $WORKERS; do
         echo "== checking connectivity to $WORKER node"
         sudo -u student ssh -o ConnectTimeout=1 $WORKER uptime || {
@@ -290,7 +291,7 @@ UNTAINT_NODES() {
 
 while [ -n "$1" ]; do
     case $1 in
-        -A|--all)       INSTALL_DOCKER=1; ALL; exit $?;;
+        -A|--all)      INSTALL_DOCKER=1; ALL; exit $?;;
         -d|--docker)   INSTALL_DOCKER=1;;
         -cd|--containerd) INSTALL_CONTAINERD=1;;
         -cni|--cilium) INSTALL_CNI_CILIUM; exit $?  ;;

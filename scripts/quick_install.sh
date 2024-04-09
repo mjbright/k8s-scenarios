@@ -4,7 +4,7 @@ HOST=$(hostname)
 
 export WORKERS=${WORKERS:-worker}
 
-echo "Installing onto  Nodes: cp, $WORKERS"
+echo "$0: Installing onto Nodes: cp, $( echo $WORKERS | sed -e 's/ /, /g' )"
 
 ## Func: --------------------------------------------------------------------------------
 
