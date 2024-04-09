@@ -6,7 +6,9 @@ INSTALL_CONTAINERD=${INSTALL_CONTAINERD:-0}
 K8S_RELEASE=${K8S_RELEASE:-v1.29}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
-export WORKER=${WORKERS:-worker}
+export WORKERS=${WORKERS:-worker}
+
+echo "Running $0 on Nodes cp, $WORKERS"
 
 SCRIPT_DIR=$( dirname $( readlink -f $0 ))
 

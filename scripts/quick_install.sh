@@ -2,7 +2,9 @@
 
 HOST=$(hostname)
 
-WORKER=${WORKERS:-worker}
+export WORKERS=${WORKERS:-worker}
+
+echo "Installing onto  Nodes: cp, $WORKERS"
 
 ## Func: --------------------------------------------------------------------------------
 
