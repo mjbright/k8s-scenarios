@@ -2,6 +2,8 @@
 
 HOST=$(hostname)
 
+WORKER=${WORKERS:-worker}
+
 ## Func: --------------------------------------------------------------------------------
 
 die() { echo "$0: die - $*" >&2; exit 1; }
@@ -27,47 +29,55 @@ CLEAN_ALL() {
     sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
     #set +x
   }
-  echo "== [worker] BEFORE - checking presence of Kubernetes packages"
-  ssh worker dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
-    echo "[worker] Cleaning up ... Kubernetes"
-    #set -x
-    ssh worker sudo kubeadm reset -f 2>&1 | sudo tee /root/tmp/reset.worker.log >/dev/null
-    ssh worker sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
-    ssh worker sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
-    ssh worker sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
-    ssh worker sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
-    #set +x
-  }
+  for WORKER in $WORKERS; do
+      echo "== [$WORKER] BEFORE - checking presence of Kubernetes packages"
+      ssh $WORKER dpkg -l | grep ".i  *kube" >/dev/null 2>&1 && {
+        echo "[$WORKER] Cleaning up ... Kubernetes"
+        #set -x
+        ssh $WORKER sudo kubeadm reset -f 2>&1 | sudo tee /root/tmp/reset.$WORKER.log >/dev/null
+        ssh $WORKER sudo killall kube-apiserver kube-proxy >/dev/null 2>&1
+        ssh $WORKER sudo rm -rf /var/lib/etcd/ /etc/kubernetes/
+        ssh $WORKER sudo apt-mark unhold kubectl kubelet kubeadm >/dev/null 2>&1
+        ssh $WORKER sudo apt-get remove -y kubectl kubelet kubernetes-cni kubeadm cri-tools containerd.io >/dev/null 2>&1
+        #set +x
+      }
+  done
 
   echo "== [$HOST] BEFORE - checking presence of Docker packages"
   dpkg -l | grep -q ".i  *docker" 2>&1 && {
     echo "[cp] Cleaning up ... Docker"
     sudo apt-get remove -y $( dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
   }
-  echo "== [worker] BEFORE - checking presence of Docker packages"
-  ssh worker dpkg -l | grep -q ".i  *docker" 2>&1 && {
-    echo "[worker] Cleaning up ... Docker"
-    ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
-  }
-
+  for WORKER in $WORKERS; do
+      echo "== [$WORKER] BEFORE - checking presence of Docker packages"
+      ssh $WORKER dpkg -l | grep -q ".i  *docker" 2>&1 && {
+        echo "[$WORKER] Cleaning up ... Docker"
+        ssh $WORKER sudo apt-get remove -y $( ssh $WORKER dpkg -l | grep -i docker | awk '{ print $2; }' ) >/dev/null 2>&1
+      }
+  done
+    
   echo "== [cp] BEFORE - checking presence of Containerd packages"
   dpkg -l | grep -q ".i  *containerd" 2>&1 && {
     echo "[cp] Cleaning up ... Containerd"
     sudo apt-get remove -y $( dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
   }
-  echo "== [worker] BEFORE - checking presence of Containerd packages"
-  ssh worker dpkg -l | grep -q ".i  *containerd" 2>&1 && {
-    # Worker first based on cp node package names:
-
-    echo "[worker] Cleaning up ... Containerd"
-    ssh worker sudo apt-get remove -y $( ssh worker dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
-  }
+  for WORKER in $WORKERS; do
+      echo "== [$WORKER] BEFORE - checking presence of Containerd packages"
+      ssh $WORKER dpkg -l | grep -q ".i  *containerd" 2>&1 && {
+        # Worker first based on cp node package names:
+    
+        echo "[$WORKER] Cleaning up ... Containerd"
+        ssh $WORKER sudo apt-get remove -y $( ssh $WORKER dpkg -l | grep -i containerd | awk '{ print $2; }' ) >/dev/null 2>&1
+      }
+  done
 
   echo
   echo "== [cp]: Packages AFTER:"
   dpkg -l | grep -E "docker|kube|containerd"
-  echo "== [worker]: Packages AFTER:"
-  ssh worker dpkg -l | grep -E "docker|kube|containerd"
+  for WORKER in $WORKERS; do
+      echo "== [$WORKER]: Packages AFTER:"
+      ssh $WORKER dpkg -l | grep -E "docker|kube|containerd"
+  done
 }
 
 DOWNLOAD_install_scripts() {
@@ -78,14 +88,18 @@ DOWNLOAD_install_scripts() {
 
     chmod +x ~/scripts/*.sh
 
-    scp ~/scripts/install_docker.sh ~/scripts/install_kube_packages.sh worker:scripts/
+    for WORKER in $WORKERS; do
+        scp ~/scripts/install_docker.sh ~/scripts/install_kube_packages.sh $WORKER:scripts/
+    done
 }
 
 CHECK_sudo_ssh() {
     echo "Checking local sudo:"
     sudo ls /tmp >/dev/null 2>&1 || die "local sudo test failed"
-    echo "Checking remote sudo:"
-    ssh worker sudo ls /tmp >/dev/null 2>&1 || die "remote sudo test failed"
+    for WORKER in $WORKERS; do
+        echo "Checking remote sudo: $WORKER"
+        ssh $WORKER sudo ls /tmp >/dev/null 2>&1 || die "remote sudo test failed"
+    done
 }
 
 INSTALL_cp_wo() {
