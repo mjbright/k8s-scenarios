@@ -116,10 +116,14 @@ INSTALL_cp_wo() {
 
 INSTALL_cp_wo=0
 
+[ $# -eq 0 ] && set -- --clean-install
+
 while [ $# -gt 0 ]; do
     case $1 in
-        -c|--clean) CLEAN_ALL; exit $?;;
-        -i|--install) INSTALL_cp_wo=1;;
+             -c|--clean) CLEAN_ALL; exit $?;;
+           -i|--install) INSTALL_cp_wo=1;;
+
+        --clean-install) CLEAN_ALL; INSTALL_cp_wo=1;;
 
         *) die "Unknown option: '$1'";;
     esac
