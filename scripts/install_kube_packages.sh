@@ -6,6 +6,8 @@ INSTALL_CONTAINERD=${INSTALL_CONTAINERD:-0}
 K8S_RELEASE=${K8S_RELEASE:-v1.29}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
+export WORKER=${WORKERS:-worker}
+
 SCRIPT_DIR=$( dirname $( readlink -f $0 ))
 
 HOST=$(hostname)
@@ -242,23 +244,25 @@ ALL() {
     echo; CREATE_JOIN_SCRIPT
     UNTAINT_NODES
 
-    echo "== checking connectivity to worker node"
-    sudo -u student ssh -o ConnectTimeout=1 worker uptime || {
-        echo "ssh to worker not configured - stopping here"
-    }
+    for WORKER in $WORKERS; do
+        echo "== checking connectivity to $WORKER node"
+        sudo -u student ssh -o ConnectTimeout=1 $WORKER uptime || {
+            echo "ssh to $WORKER not configured - stopping here"
+        }
 
-    sudo -u student scp $JOIN_SH worker:/tmp/join.sh
-    sudo -u student ssh -q worker $SCRIPT_DIR/install_docker.sh
-    sudo -u student ssh -q worker sudo $0
-    sudo -u student ssh -q worker sudo sh -x /tmp/join.sh
+        sudo -u student scp $JOIN_SH $WORKER:/tmp/join.sh
+        sudo -u student ssh -q $WORKER $SCRIPT_DIR/install_docker.sh
+        sudo -u student ssh -q $WORKER sudo $0
+        sudo -u student ssh -q $WORKER sudo sh -x /tmp/join.sh
 
-    echo; echo "== Waiting for Node to be Ready ..."
-    while sudo -u student kubectl get nodes | grep -q NotReady; do
-        echo -n "."
-        sleep 5
+        echo; echo "== Waiting for Node to be Ready ..."
+        while sudo -u student kubectl get nodes | grep -q NotReady; do
+            echo -n "."
+            sleep 5
+        done
+        echo
+        sudo -u student kubectl get nodes
     done
-    echo
-    sudo -u student kubectl get nodes
 }
 
 KUBEADM_INIT() {
