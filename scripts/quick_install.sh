@@ -105,9 +105,8 @@ CHECK_sudo_ssh() {
 }
 
 INSTALL_cp_wo() {
-    echo "WORKERS=$WORKERS"
-    env | grep WORKERS
-    exit 0
+    echo "WORKERS=$WORKERS [ env: $( env | grep WORKERS ) ]"
+    #exit 0
     sudo ~/scripts/install_kube_packages.sh -A
 }
 
