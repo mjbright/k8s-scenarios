@@ -4,7 +4,7 @@ HOST=$(hostname)
 
 export WORKERS=${WORKERS:-worker}
 
-echo "$0: Installing onto Nodes: cp, $( echo $WORKERS | sed -e 's/ /, /g' )"
+echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
 
 ## Func: --------------------------------------------------------------------------------
 
@@ -105,6 +105,8 @@ CHECK_sudo_ssh() {
 }
 
 INSTALL_cp_wo() {
+    echo "WORKERS=$WORKERS"
+    env | grep WORKERS
     sudo ~/scripts/install_kube_packages.sh -A
 }
 
