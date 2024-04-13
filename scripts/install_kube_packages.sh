@@ -79,6 +79,19 @@ EOF
     } > ~/tmp/containerd.conf.op  2>&1
 }
 
+INSTALL_NERDCTL() {
+    URL=https://github.com/containerd/nerdctl/releases/download/v2.0.0-beta.4/nerdctl-2.0.0-beta.4-linux-amd64.tar.gz
+
+    wget -qO ~/tmp/nerdctl.tgz $URL
+
+    #tar xf ~/tmp/nerdctl.tgz
+    tar xf ~/tmp/nerdctl.tgz nerdctl
+
+    sudo mv nerdctl /usr/local/bin/
+
+    nerdctl version
+}
+
 INSTALL_KUBE_PRE_PKGS() {
     local PKGS="apt-transport-https ca-certificates curl gnupg-agent vim tmux jq software-properties-common"
 
@@ -228,6 +241,7 @@ INSTALL_KUBE() {
     
     echo "Checking Docker is available:"
     sudo docker --version || die "Docker not accessible"
+    INSTALL_NERDCTL
 
     INSTALL_KUBE_PRE_PKGS
     INSTALL_KUBE_PKGS
