@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-deploy
+  name: test-deploy
+
+spec:
+  replicas: 50
+  selector:
+    matchLabels:
+      app: test-deploy
+
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+
+  template:
+    metadata:
+      labels:
+        app: test-deploy
+
+    spec:
+      containers:
+      - image: mjbright/k8s-demo:1
+        imagePullPolicy: IfNotPresent
+        name: k8s-demo
+
