@@ -3,7 +3,8 @@
 # Set defaults:
 INSTALL_DOCKER=${INSTALL_DOCKER:-0}
 INSTALL_CONTAINERD=${INSTALL_CONTAINERD:-0}
-K8S_RELEASE=${K8S_RELEASE:-v1.29}
+#K8S_RELEASE=${K8S_RELEASE:-v1.29}
+K8S_RELEASE=${K8S_RELEASE:-v1.30}
 CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 
 ## echo "$0: WORKERS=$WORKERS"
@@ -98,7 +99,7 @@ INSTALL_KUBE_PRE_PKGS() {
     echo "== [$HOST] Performing apt-get update ..."
     apt-get update >/dev/null 2>&1
     echo "== [$HOST] Installing packages: $PKGS ..."
-    apt-get install -y $PKFGS >/dev/null 2>&1
+    apt-get install -y $PKGS >/dev/null 2>&1
 }
 
 INSTALL_KUBE_PKGS() {
