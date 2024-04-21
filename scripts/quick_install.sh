@@ -4,8 +4,6 @@ HOST=$(hostname)
 
 export WORKERS=${WORKERS:-worker}
 
-echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
-
 ## Func: --------------------------------------------------------------------------------
 
 die() { echo "$0: die - $*" >&2; exit 1; }
@@ -132,6 +130,8 @@ while [ $# -gt 0 ]; do
 done
 
 ## Main: --------------------------------------------------------------------------------
+
+echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
 
 [ $INSTALL_cp_wo -ne 0 ] && {
     CHECK_sudo_ssh

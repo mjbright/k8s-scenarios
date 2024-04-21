@@ -11,8 +11,6 @@ CILIUM_RELEASE=${CILIUM_RELEASE:-1.15.3}
 export WORKERS=${WORKERS:-worker}
 ## echo "$0: WORKERS=$WORKERS"
 
-echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
-
 SCRIPT_DIR=$( dirname $( readlink -f $0 ))
 
 HOST=$(hostname)
@@ -331,6 +329,8 @@ done
 
 
 ## Main: --------------------------------------------------------------------------
+
+echo "$0: Operating on Nodes: [ cp, $( echo $WORKERS | sed -e 's/ /, /g' ) ]"
 
 echo "Installing Kubernetes packages for release $K8S_RELEASE"
 
