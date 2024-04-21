@@ -257,8 +257,10 @@ ALL() {
     echo
     KUBEADM_INIT
 
-    echo; echo "==kubectl wait no cp --for=condition=Ready"
-    sudo -u student kubectl wait no cp --for=condition=Ready
+    while kubectl get no cp | grep NotReady; do
+        echo; echo "==kubectl wait no cp --for=condition=Ready"
+        sudo -u student kubectl wait no cp --for=condition=Ready
+    done
 
     echo; echo "== sudo -u student kubectl get no"
     sudo -u student kubectl get no
