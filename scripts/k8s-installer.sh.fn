@@ -507,9 +507,14 @@ INSTALL_PKGS() {
     STEP_HEADER "INSTALL_PKGS:"  "Install the Kubernetes packages kubeadm (installer), kubectl (client), kubelet (manages Docker)"
     RUN sudo apt-mark unhold kubectl kubeadm kubelet
     RUN_APT_GET_INSTALL kubelet=$K8S_VERSION kubeadm=$K8S_VERSION kubectl=$K8S_VERSION 
+    dpkg -l | grep kubelet || die "Failed to install kubelet"
+    dpkg -l | grep kubeadm || die "Failed to install kubeadm"
+    dpkg -l | grep kubectl || die "Failed to install kubectl"
 
     STEP_HEADER "INSTALL_PKGS:"  "'mark' the packages as held at their current version - prevent accidental upgrades"
     RUN sudo apt-mark hold kubelet kubeadm kubectl
+    kubeadm --version
+    exit
 
     STEP_HEADER "INSTALL_PKGS:"  "Showing kubectl, kubeadm package versions"
     RUN kubectl version --client --short
@@ -542,29 +547,136 @@ INSTALL_BASE_PKGS() {
     #RUN sudo apt-get -qq update
     STEP_HEADER "INSTALL_BASE_PKGS:"  "Install packages necessary to pull packages over https"
     RUN_APT_GET_INSTALL curl gnupg2 software-properties-common apt-transport-https ca-certificates vim git wget
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" |
+        sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    #sudo apt install containerd -y || die "Containerd installn step failed"
+    sudo apt-get update &&
+        sudo apt install containerd.io -y || die "Containerd.io installn step failed"
+
+    CONFIGURE_CONTAINERD_K8S
+}
+
+CONFIGURE_CONTAINERD_K8S() {
+    sudo containerd config default | sudo tee /etc/containerd/config.toml
+    sudo sed -e 's/SystemdCgroup = false/SystemdCgroup = true/g' -i /etc/containerd/config.toml
+    sudo systemctl restart containerd
+}
+
+INSTALL_CONTAINERD() {
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Download/install the GPG key used to sign the Containerd packages"
+    RUN_APT_GET_INSTALL containerd.io
+    echo "Ignore possible Containerd failures at this stage"
+    CHECK_CONTAINERD_STARTED
+
+    # Add repo and Install packages
+    #STEP_HEADER "INSTALL_CONTAINERD:"  "Reread(update) the list of available packages"
+    #STEP_HEADER "INSTALL_CONTAINERD:"  "Switch off Linux swap - Kubernetes will manage it's memory"
+    #RUN sudo apt-get -qq update
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Download/install the GPG key used to sign the Containerd packages"
+    #RUN 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -'
+    RUN sudo mkdir -p /etc/apt/keyrings
+    #curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo rm /etc/apt/keyrings/docker.gpg
+    #RUN 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg'
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Configure the (apt) package tool to add the Containerd package repository"
+    RUN 'sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Update the list of packages to take into account the added Containerd repository"
+    RUN sudo apt-get -qq update
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Install the packages containerd.io (container engine), docker-ce* (containerd client and daemon)"
+    RUN_APT_GET_INSTALL containerd.io
+    echo "Ignore possible Containerd failures at this stage"
+    CHECK_CONTAINERD_STARTED
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Configure Containerd for Kubernetes"
+    CONFIGURE_CONTAINERD_K8S
+    # Create required directories
+    RUN sudo mkdir -p /etc/systemd/system/docker.service.d
+
+    # Create daemon json config file
+    echo "Configuring /etc/docker/daemon.json ..."
+    sudo tee /etc/docker/daemon.json <<EOF
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Start & enable Services"
+    RUN sudo systemctl daemon-reload
+    RUN sudo systemctl restart containerd
+    RUN sudo systemctl enable containerd
+
+    CHECK_CONTAINERD_STARTED
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Allow user '$USER' to use Containerd'"
+    echo "Note: you must then logout/login of all '$USER' sessions"
+    #RUN sudo usermod -aG containerd $USER
+    RUN sudo usermod -aG docker $USER
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Show Containerd version"
+    RUN sudo containerd --version
+
+    STEP_HEADER "INSTALL_CONTAINERD:"  "Verify Containerd interaction"
+    #RUN sudo containerd ps |
+    LOOP=0
+    while ! sudo containerd ps 2>/dev/null; do
+        let LOOP=LOOP+1
+        echo "Loop$LOOP: Containerd not started: sleeping then restarting ..."
+        sleep 10
+        RUN sudo systemctl restart containerd
+    done
+
+    RUN sudo containerd ps
+    [ $? -ne 0 ] && ALWAYS_WARN_PROMPT "Containerd doesn't seem to be started"
 }
 
 INSTALL_DOCKER() {
     # Add repo and Install packages
     #STEP_HEADER "INSTALL_DOCKER:"  "Reread(update) the list of available packages"
     #STEP_HEADER "INSTALL_DOCKER:"  "Switch off Linux swap - Kubernetes will manage it's memory"
-    #RUN sudo apt-get -qq update
+    RUN sudo apt-get -qq update
+    RUN sudo apt-get install -y ca-certificates curl
 
     STEP_HEADER "INSTALL_DOCKER:"  "Download/install the GPG key used to sign the Docker packages"
-    RUN 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -'
+    #RUN 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -'
+    #RUN sudo mkdir -p /etc/apt/keyrings
+    RUN sudo install -m 0755 -d /etc/apt/keyrings
+    #curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo rm /etc/apt/keyrings/docker.gpg
+    STEP_HEADER "INSTALL_DOCKER:"  "Install the packages containerd.io (container engine), docker-ce* (docker client and daemon)"
+    #RUN 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg'
+    RUN sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
 
     STEP_HEADER "INSTALL_DOCKER:"  "Configure the (apt) package tool to add the Docker package repository"
-    RUN 'sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
+    #RUN 'sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
+    # Add the repository to Apt sources:
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    RUN sudo apt-get update
 
     STEP_HEADER "INSTALL_DOCKER:"  "Update the list of packages to take into account the added Docker repository"
     RUN sudo apt-get -qq update
 
-    STEP_HEADER "INSTALL_DOCKER:"  "Install the packages containerd.io (container engine), docker-ce* (docker client and daemon)"
-    RUN_APT_GET_INSTALL containerd.io docker-ce docker-ce-cli
+    #RUN_APT_GET_INSTALL containerd.io docker-ce docker-ce-cli
+    RUN_APT_GET_INSTALL docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     echo "Ignore possible Docker failures at this stage"
     CHECK_DOCKER_STARTED
 
     STEP_HEADER "INSTALL_DOCKER:"  "Configure Docker for Kubernetes"
+    CONFIGURE_CONTAINERD_K8S
     # Create required directories
     RUN sudo mkdir -p /etc/systemd/system/docker.service.d
 
@@ -590,7 +702,8 @@ EOF
 
     STEP_HEADER "INSTALL_DOCKER:"  "Allow user '$USER' to use Docker'"
     echo "Note: you must then logout/login of all '$USER' sessions"
-    RUN sudo usermod -aG docker $USER
+    #RUN sudo usermod -aG containerd $USER
+    RUN sudo usermod -aG docker     $USER
 
     STEP_HEADER "INSTALL_DOCKER:"  "Show Docker version"
     RUN sudo docker --version
@@ -610,7 +723,7 @@ EOF
 }
 
 INSTALL_CRI_DOCKERD() {
-    STEP_HEADER "INSTALL_DOCKER:"  "Download/install crio-dockerd adapation layer"
+    STEP_HEADER "INSTALL_CRI_DOCKERD:"  "Download/install crio-dockerd adapation layer"
     RUN wget -qO /tmp/cri-dockerd.tgz https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.2/cri-dockerd-0.3.2.amd64.tgz
 
     #die "SO FAR SO GOOD"
@@ -631,6 +744,20 @@ INSTALL_CRI_DOCKERD() {
     RUN sudo systemctl daemon-reload
     RUN sudo systemctl enable --now cri-docker.service
     RUN sudo systemctl enable --now cri-docker.socket
+}
+
+CHECK_CONTAINERD_STARTED() {
+    sudo systemctl status containerd | grep failed && {
+        STEP_HEADER "INSTALL_CONTAINERD:"  "Re-starting Containerd after failure"
+        RUN sudo systemctl start containerd
+        sleep 2
+    }
+
+    sudo systemctl status containerd | grep failed && {
+        die "Containerd install failed - try restarting using 'sudo systemctl start containerd'"
+    }
+
+    echo "Containerd is running OK"
 }
 
 CHECK_DOCKER_STARTED() {
@@ -668,6 +795,7 @@ CHECK_CRIO_STARTED() {
 INSTALL_PKGS_INIT() {
     INSTALL_PKGS
 
+XX
     KUBEADM_INIT
 
     UNTAINT_CONTROL_NODE
@@ -714,7 +842,10 @@ KUBEADM_INIT() {
 
     SOCKET=""
     [ "$CONTAINER_ENGINE" = "DOCKER" ] && {
-        SOCKET="--cri-socket unix:///var/run/cri-dockerd.sock"
+        # Was breaking kubeadm config images pull && kubeadm init:
+        #SOCKET="--cri-socket unix:///var/run/cri-dockerd.sock"
+        #SOCKET="--cri-socket unix:///var/run/docker.sock"
+        SOCKET=""
     }
 
     STEP_HEADER "KUBEADM_INIT:"  "Pre-pulling container images"
@@ -723,7 +854,7 @@ KUBEADM_INIT() {
     CP_ENDPOINT=""
     K8SCP=$( grep -E " k8scp$| k8scp " /etc/hosts | awk '{ print $1; }' )
     [ ! -z "$K8SCP" ] && CP_ENDPOINT="--control-plane-endpoint k8scp"
-    K8SLB=$( grep-E  " k8slb$| k8slb" /etc/hosts | awk '{ print $1; }' )
+    K8SLB=$( grep -E  " k8slb$| k8slb" /etc/hosts | awk '{ print $1; }' )
     [ ! -z "$K8SLB" ] && CP_ENDPOINT="--control-plane-endpoint k8slb"
 
     if [ -z "$KUBEADM_CONFIG" ]; then

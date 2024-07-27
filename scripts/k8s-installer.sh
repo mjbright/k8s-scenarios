@@ -20,6 +20,27 @@ CRIO_PKGS="cri-o cri-o-runc podman buildah"
 KUBE_PKGS="kubeadm kubectl kubelet"
 KUBEADM_CONFIG=""
 
+[ "$1" = "-x"  ] && { set -x;  shift; }
+[ "$1" = "-fn" ] && { set -xT; shift; }
+set -T
+#[ "$1" = "-fn" ] && { set -o functrace; shift; }
+
+#K8S_VERSION=1.23.4-00
+#K8S_VERSION=1.24.0-00
+#K8S_VERSION=1.24.4-00
+#CRIO_VERSION=1.24
+#K8S_VERSION=1.25.2-00
+#CRIO_VERSION=1.25
+#K8S_VERSION=1.26.0-00
+#CRIO_VERSION=1.26
+#K8S_VERSION=1.27.3-00
+#CRIO_VERSION=1.27
+K8S_VERSION=1.30.3-1.1
+CRIO_VERSION=1.30
+K8S_RELEASE=$( echo $K8S_VERSION | sed -e 's/\.[0-9]*-[0-9][0-9]$//' -e 's/\.[0-9]*-[0-9]\.[0-9]$//' )
+echo "K8S_VERSION=$K8S_VERSION     K8S_RELEASE=${K8S_RELEASE}"
+#exit
+
 export DEBIAN_FRONTEND=noninteractive
 
 shopt -s expand_aliases
@@ -39,24 +60,34 @@ LB_ARGS=""
 ARCH=$( uname -p )
 
 #CONTAINER_ENGINE=CRIO
-CONTAINER_ENGINE=CONTAINERD
+#CONTAINER_ENGINE=CONTAINERD
+CONTAINER_ENGINE=DOCKER
 CRIO_PKGS=""
+
+INSTALL_PODMAN=1
+[ "$CONTAINER_ENGINE" = "DOCKER" ] && INSTALL_PODMAN=0
 
 # Temporary removal of podman due to upstream conflicts: containernetwork-plugins and kubernetes-cni
 APT_INSTALL_BUILDAH=0
 APT_INSTALL_PODMAN=0
 #APT_INSTALL_PODMAN=1
 #APT_INSTALL_BUILDAH=1
-[ $APT_INSTALL_PODMAN -eq 0 ] && {
-    SCRIPT_VERSION_INFO+="\nManual installation of Podman"
-    CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *podman *//g' )
-    #CRIO_PKGS="cri-o cri-o-runc buildah"
-    #PODMAN_VERSION="v3.4.2"
-    PODMAN_VERSION="v4.2.1"
+[ "$CONTAINER_ENGINE" = "DOCKER" ] && {
+    APT_INSTALL_BUILDAH=0
+    APT_INSTALL_PODMAN=0
 }
-[ $APT_INSTALL_PODMAN -eq 0 ] && {
-    SCRIPT_VERSION_INFO+="\nManual installation of Buildah"
-    CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *buildah *//g' )
+[ $INSTALL_PODMAN -ne 0 ] && {
+    [ $APT_INSTALL_PODMAN -eq 0 ] && {
+        SCRIPT_VERSION_INFO+="\nManual installation of Podman"
+        CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *podman *//g' )
+        #CRIO_PKGS="cri-o cri-o-runc buildah"
+        #PODMAN_VERSION="v3.4.2"
+        PODMAN_VERSION="v4.2.1"
+    }
+    [ $APT_INSTALL_PODMAN -eq 0 ] && {
+        SCRIPT_VERSION_INFO+="\nManual installation of Buildah"
+        CRIO_PKGS=$( echo $CRIO_PKGS | sed 's/ *buildah *//g' )
+    }
 }
 
 echo "[APT_INSTALL_PODMAN=$APT_INSTALL_PODMAN APT_INSTALL_BUILDAH=$APT_INSTALL_BUILDAH] CRIO_PKGS='$CRIO_PKGS'"
@@ -87,22 +118,12 @@ FORCE_NODENAME=1
 # NOTE: For cri-o installation follow instructions at:
 #       https://github.com/cri-o/cri-o/blob/main/install.md#apt-based-operating-systems
 
-#K8S_VERSION=1.23.4-00
-#K8S_VERSION=1.24.0-00
-#K8S_VERSION=1.24.4-00
-#CRIO_VERSION=1.24
-#K8S_VERSION=1.25.2-00
-#CRIO_VERSION=1.25
-#K8S_VERSION=1.26.0-00
-#CRIO_VERSION=1.26
-K8S_VERSION=1.27.3-00
-CRIO_VERSION=1.27
-
 case $CONTAINER_ENGINE in
+    DOCKER)     CONTAINER_ENGINE_VERSION=latest;;
     CONTAINERD) CONTAINER_ENGINE_VERSION=latest;;
-    CRIO) CONTAINER_ENGINE_VERSION=$CRIO_VERSION;;
+    CRIO)       CONTAINER_ENGINE_VERSION=$CRIO_VERSION;;
 esac
-echo; echo "-- Installing k8s [$K8S_VERSION] & $CONTAINER_ENGINE [ $CONTAINER_ENGINE_VERSION ], logging to $LOGFILE"
+echo; echo "-- [$0 $LINENO] Installing k8s [$K8S_VERSION] & $CONTAINER_ENGINE [ $CONTAINER_ENGINE_VERSION ], logging to $LOGFILE"
 
 PV_RATE=40
 
@@ -113,6 +134,7 @@ LOGFILE=~/tmp/$(basename $0).log
 echo -e "-- $SCRIPT_VERSION_INFO"
 #exec &> >(tee -a "$LOGFILE")
 exec &> >(tee "$LOGFILE")
+#set -xT
 
 
 
@@ -263,7 +285,7 @@ net.ipv4.ip_forward = 1
 EOF
 
     RUN sudo sysctl --system > ~/tmp/sysctl.op 2>&1
-    sudo cat /proc/sys/net/ipv4/ip_forward | grep 1 ||
+    sudo grep 1 /proc/sys/net/ipv4/ip_forward ||
         die "Failed to update /proc/sys/net/ipv4/ip_forward"
 }
 
@@ -280,7 +302,7 @@ SET_HOSTNAME() {
     #exit
     [ $HOSTNAME != "$SET_NODENAME" ] && {
         echo "SET_HOSTNAME $HOSTNAME => $SET_NODENAME"
-        hostname | grep -iq "^${SET_NODENAME}$" ||
+        hostname | grep -iq "^${SET_NODENAME}$" /etc/hosts ||
             YESNO "Do you want to change hostname to be '$SET_NODENAME' before installing (recommended)" "y" &&
                 sudo hostnamectl set-hostname $SET_NODENAME
 
@@ -293,7 +315,9 @@ SET_HOSTNAME() {
     IPV4s=$( ip -bri -4 a | awk '/ UP / { FS="/"; $0=$3; print $1; }' )
     IPV4s=$( echo $IPV4s ) # Create string w/o linefeed
     #echo "IPV4s=$IPV4s"
-    sudo sh -c "echo '$IPV4s $SET_NODENAME' >> /etc/hosts"
+    grep -q "$IPV4s $SET_NODENAME" /etc/hosts || {
+        sudo sh -c "echo '$IPV4s $SET_NODENAME' >> /etc/hosts"
+    }
     echo "SET_HOSTNAME $SET_NODENAME"
     RUN cat /etc/hosts
     RUN hostname
@@ -320,6 +344,8 @@ SET_OS() {
 }
 
 SET_REPOS_CRIO() {
+    die "SET_REPOS_CRIO - untested now"
+
     __FILE=/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
     echo "deb [signed-by=/usr/share/keyrings/libcontainers-archive-keyring.gpg] https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/$OS/ /" |
         RUN sudo tee $__FILE
@@ -406,7 +432,8 @@ INSTALL_CRIO() {
         die "No crio socket: /var/run/crio/crio.sock"
 }
 
-INSTALL_KUBE() {
+xxxx_OLD_INSTALL_KUBE_PKGS() {
+    # read -p "About to install Kubernetes packages\nPress <enter>"
     sudo sh -c "echo 'deb http://apt.kubernetes.io/ kubernetes-xenial main' >> /etc/apt/sources.list.d/kubernetes.list"
 
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
@@ -426,12 +453,65 @@ INSTALL_KUBE() {
          [ -z `which kubeadm` ] && die "Looks like kubeadm/kubelet/kubectl install failed - kubeadm missing"
     }
     RUN sudo apt-mark hold kubeadm kubelet kubectl
+}
 
+NEW_INSTALL_KUBE_PKGS() {
+    local PKGS="kubelet kubeadm kubectl"
+
+    K8S_KEY_URL=https://pkgs.k8s.io/core:/stable:/v${K8S_RELEASE}/deb/Release.key
+    K8S_REPO_LINE="deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${K8S_RELEASE}/deb/ /"
+
+    echo "== [$HOST] Obtaining Kubernetes package GPG key..."
+    mkdir -p -m 755 /etc/apt/keyrings
+
+    [ -f  /etc/apt/keyrings/kubernetes-apt-keyring.gpg ] &&
+        sudo rm -f /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    #echo "curl -fsSL $K8S_KEY_URL | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+	  sudo ls -al /etc/apt/keyrings/kubernetes-apt-keyring.gpg 2>/dev/null
+	  sudo rm  -f /etc/apt/keyrings/kubernetes-apt-keyring.gpg 2>/dev/null
+    curl -fsSL $K8S_KEY_URL |
+	      sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg || {
+            echo "Failed: curl -fsSL $K8S_KEY_URL"
+	          die "Failed to add Kubernetes package key"
+        }
+	  sudo ls -al /etc/apt/keyrings/
+
+    echo "== [$HOST] Creating kubernetes.list apt sources file..."
+    echo $K8S_REPO_LINE | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+    echo "== [$HOST] Performing apt-get update ..."
+    RUN sudo apt-get update
+
+    echo "== [$HOST] Installing packages: $PKGS ..."
+    echo "#### sudo apt-get install -y kubeadm=1.30.3-1.1"
+    PKGS_V=""; for PKG in $PKGS; do PKGS_V+=" $PKG=$K8S_VERSION"; done
+    RUN sudo apt-get install -y $PKGS_V
+    #apt-get install -y $PKGS >/dev/null 2>&1
+    dpkg -l | grep "^ii.* kubeadm" || die "Failed to install kubeadm"
+    dpkg -l | grep "^ii.* kubelet" || die "Failed to install kubelet"
+    dpkg -l | grep "^ii.* kubectl" || die "Failed to install kubectl"
+
+    echo "== [$HOST] Marking packages as 'hold': $PKGS ..."
+    #echo "-- apt-mark hold $PKGS"
+    apt-mark hold $PKGS >/dev/null 2>&1
+}
+
+INSTALL_KUBE() {
     [ "$CONTAINER_ENGINE" = "CONTAINERD" ] && INSTALL_CONTAINERD
     [ "$CONTAINER_ENGINE" = "DOCKER" ] && {
-        INSTALL_DOCKER
-        INSTALL_CRI_DOCKERD
+        # read -p "About to install Docker\nPress <enter>"
+        # read -p "Temp disabled INSTALL_DOCKER"
+        dpkg -l | grep "^ii *docker-ce " ||
+            INSTALL_DOCKER
+        # read -p "About to configure Containerd for Kubernetes\nPress <enter>"
+        CONFIGURE_CONTAINERD_K8S
+        #INSTALL_CRI_DOCKERD
     }
+
+    #OLD_INSTALL_KUBE_PKGS - for < 1.28 ??
+    #read -p "OK about to call NEW_INSTALL_KUBE_PKGS"
+    NEW_INSTALL_KUBE_PKGS
 }
 
 INSTALL_HELM() {
@@ -538,10 +618,10 @@ EOF
 
 }
 
-## -- Args: ----------------------------------------------------------
-
 # READ OLD functions:
 source ${0}.fn
+
+## -- Args: ----------------------------------------------------------
 
 HOST="cp"
 ROLE="cp"
@@ -593,6 +673,8 @@ EOF
        -set-nodename) shift; FORCE_NODENAME=$1;;
 
         -D) CONTAINER_ENGINE=DOCKER;;
+        -CD) CONTAINER_ENGINE=CONTAINERD;;
+        -CR) CONTAINER_ENGINE=CRIO;;
 
         # TODO: Fix to work with multiple control nodes:
        -c|-CP)   NODE_ROLE="control";
@@ -622,6 +704,7 @@ EOF
 
         # go faster stripes:
         -q)   PV_RATE=100;;
+        -qq)   PV_RATE=200;;
         -Q)   ACTION="QUICK_RESET_UNINSTALL_REINSTALL";;
 
       -cp) ROLE="cp"
@@ -663,12 +746,15 @@ case $NODE_ROLE in
          *) die "Unknown NODE_ROLE '$NODE_ROLE'";;
 esac
 
+# START:
+#read -p "OK to here(START): Press <enter>"
 DISABLE_HOSTS_HOSTNAME_MGMT
 REMOVE_PKGS
 APT_BASE
 LINUX_CONFIG
 SET_HOSTNAME $HOST
 SET_OS
+#read -p "OK to here(post SET_OS): Press <enter>"
 
 # Disable CRIO install:
 [ "$CONTAINER_ENGINE" = "CRIO" ] && {
@@ -680,7 +766,8 @@ SET_OS
 # [ "$CONTAINER_ENGINE" = "CONTAINERD" ] && INSTALL_CONTAINERD
 
 INSTALL_KUBE
-[ $APT_INSTALL_PODMAN -eq 0 ] && INSTALL_PODMAN
+#read -p "OK to here(post INSTALL_KUBE): Press <enter>"
+[ $INSTALL_PODMAN -ne 0 ] && [ $APT_INSTALL_PODMAN -eq 0 ] && INSTALL_PODMAN
 PRELOAD_USER_IMAGES
 
 if [ "$ROLE" != "worker" ]; then
@@ -694,4 +781,10 @@ if [ "$ROLE" != "worker" ]; then
 fi
 
 exit 0
+
+XXXXXX
+
+
+
+
 
