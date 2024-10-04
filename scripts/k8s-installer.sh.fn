@@ -879,7 +879,8 @@ KUBEADM_INIT() {
         RUN $CMD  |& tee -a $KUBEADM_INIT_OP
     else
         cat > $KUBEADM_CONFIG <<EOF
-apiVersion: kubeadm.k8s.io/v1beta3
+#apiVersion: kubeadm.k8s.io/v1beta3
+apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 kubernetesVersion: $K8S_VERSION_KA
 controlPlaneEndpoint: "cp:6443"
