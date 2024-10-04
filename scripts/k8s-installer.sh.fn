@@ -1,6 +1,7 @@
 #!/bin/bash
 
 KUBEADM_INIT_OP="kubeadm.init.op"
+KUBEADM_CONFIG=kubeadm-config.yaml
 
 PROMPTS=${PROMPTS:=1}
 ALL_PROMPTS=${ALL_PROMPTS:=1}
@@ -501,6 +502,7 @@ INSTALL_PKGS() {
     STEP_HEADER "INSTALL_PKGS:"  "Configure the (apt) package tool to add the Kubernetes package repository"
     [ -f /etc/apt/sources.list.d/kubernetes.list ] &&
         sudo rm /etc/apt/sources.list.d/kubernetes.list
+            # XXX: TODO - out of date !!! (search on K8S_RELEASE, REPO_LINE in .sh file)
     RUN 'echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list'
 
     STEP_HEADER "INSTALL_PKGS:"  "Update the list of packages to take into account the added Kubernetes repository"
@@ -876,6 +878,16 @@ KUBEADM_INIT() {
         echo "# -- $CMD " > $KUBEADM_INIT_OP
         RUN $CMD  |& tee -a $KUBEADM_INIT_OP
     else
+        cat > $KUBEADM_CONFIG <<EOF
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: $K8S_VERSION_KA
+controlPlaneEndpoint: "cp:6443"
+networking:
+  podSubnet: 192.168.0.0/16
+  serviceSubnet: "10.96.0.0/16"
+  dnsDomain: "cluster.local"
+EOF
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
 
         CMD="sudo kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --config $KUBEADM_CONFIG"
