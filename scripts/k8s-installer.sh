@@ -581,10 +581,18 @@ HAPPY_SAILING_TEST() {
 
        echo
        if [ `kubectl get no | wc -l` = "2" ]; then
-           CYAN "Remember to join the 2nd node"; echo
+           CYAN "Remember to join the worker node"; echo
            CYAN "- scp ~/tmp/run_on_worker_to_join.txt $WORKER_NODE:"; echo
            CYAN "- ssh $WORKER_NODE sh -x ./run_on_worker_to_join.txt"; echo
            CYAN "- kubectl get nodes"; echo
+           echo
+           CYAN "Remember to join the other cp nodes"; echo
+           CYAN "- scp ~/tmp/run_on_cpN_to_join.txt cp2:"; echo
+           CYAN "- scp ~/tmp/run_on_cpN_to_join.txt cp3:"; echo
+           CYAN "- ssh cp2 sh -x ./run_on_cpN_to_join.txt"; echo
+           CYAN "- ssh cp3 sh -x ./run_on_cpN_to_join.txt"; echo
+           CYAN "- kubectl get nodes"; echo
+
            sleep 1
        fi
    fi
@@ -629,6 +637,7 @@ source ${0}.fn
 
 HOST="cp"
 ROLE="cp"
+CP_INIT=0
 ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0
 
 INSTALL_TOOLS
@@ -681,12 +690,21 @@ EOF
         -CR) CONTAINER_ENGINE=CRIO;;
 
         # TODO: Fix to work with multiple control nodes:
-       -c|-CP)   NODE_ROLE="control";
-              #ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
-              ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
+       -c|-CP) 
+             HOST="cp";
+             CP_INIT=1; NODE_ROLE="control"; ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0
+             case $HOSTNAME in
+                 cp2) HOST="cp2"; CP_INIT=0;;
+                 cp3) HOST="cp3"; CP_INIT=0;;
+             esac
+             #ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
+             ;;
+
+       -c2|-CP2)   HOST="cp2"; CP_INIT=0; NODE_ROLE="control"; ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
+       -c3|-CP3)   HOST="cp3"; CP_INIT=0; NODE_ROLE="control"; ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
         # TODO: Fix to work with multiple workers:
-       -WO)   NODE=worker; NODE_ROLE="worker"; 
+       -WO)   NODE=worker; CP_INIT=0; NODE_ROLE="worker"; 
               ACTION="QUICK_RESET_UNINSTALL_REINSTALL";
               ABS_NO_PROMPTS=1; ALL_PROMPTS=0; PROMPTS=0;;
 
@@ -776,7 +794,10 @@ INSTALL_KUBE
 [ $INSTALL_PODMAN -ne 0 ] && [ $APT_INSTALL_PODMAN -eq 0 ] && INSTALL_PODMAN
 PRELOAD_USER_IMAGES
 
-if [ "$ROLE" != "worker" ]; then
+#if [ "$ROLE" != "worker" ]; then fi
+
+if [ "$CP_INIT" != "0" ]; then
+    echo "==== Initialzing Control Plane [CP_INIT=$CP_INIT]"
     KUBEADM_INIT;
     INSTALL_HELM
     UNTAINT_CONTROL_NODE
@@ -784,13 +805,9 @@ if [ "$ROLE" != "worker" ]; then
     echo
     HAPPY_SAILING_TEST "CLEAN"
     #HAPPY_SAILING
+else
+    echo "==== Initialzing Control Plane [CP_INIT=$CP_INIT]"
 fi
 
 exit 0
-
-XXXXXX
-
-
-
-
 

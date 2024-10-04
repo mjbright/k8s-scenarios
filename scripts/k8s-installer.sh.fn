@@ -526,12 +526,21 @@ INSTALL_PKGS() {
     RUN sudo swapoff -a
 
     STEP_HEADER "INSTALL_PKGS:"  "Package installation & configuration complete"
-    [ "$NODE_ROLE" = "control"  ] && return
+    [ "$NODE_ROLE" = "control"  ] && {
+        case $HOST in
+            cp2|cp3)
+               echo "Now manually join this node to the cluster as a CONTROL-PLANE node"
+               echo "The command to use on this node was previously saved in"
+               echo "    ~/tmp/run_on_cpN_to_join.txt"
+               echo "on the (main/only) control node"
+        esac
+        return
+    }
 
     echo "Now manually join this node to the cluster"
     echo "The command to use on this node was previously saved in"
     echo "    ~/tmp/run_on_worker_to_join.txt"
-    echo "on the control node"
+    echo "on the (main/only) control node"
     echo
 }
 
@@ -795,7 +804,6 @@ CHECK_CRIO_STARTED() {
 INSTALL_PKGS_INIT() {
     INSTALL_PKGS
 
-XX
     KUBEADM_INIT
 
     UNTAINT_CONTROL_NODE
@@ -875,8 +883,12 @@ KUBEADM_INIT() {
     sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl get configmap -n kube-system kubeadm-config -o yaml |&
         sudo tee /root/kubeadm-config.yaml
 
-    # Extract join command:
-    grep -A1 -m1 "kubeadm join" kubeadm.init.op |
+    # Extract cp join command:
+    grep -A1 -m1 "kubeadm join" $KUBEADM_INIT_OP |
+        sed -e '1 s/^/sudo /' -e "s,kubeadm,kubeadm $SOCKET," | tail -2 > ~/tmp/run_on_cpN_to_join.txt
+
+    # Extract worker join command:
+    grep -A1     "kubeadm join" $KUBEADM_INIT_OP |
         sed -e '1 s/^/sudo /' -e "s,kubeadm,kubeadm $SOCKET," | tail -2 > ~/tmp/run_on_worker_to_join.txt
 
     STEP_HEADER "KUBEADM_INIT:"  "Showing installed node"
@@ -948,7 +960,6 @@ UNTAINT_CONTROL_NODE() {
         #RUN kubectl taint node cp node-role.kubernetes.io/control-plane-
     kubectl describe node | grep Taint | grep /control-plane &&
         RUN kubectl taint node --all node-role.kubernetes.io/control-plane-
-    #XXX
      #kubectl taint node cp node-role.kubernetes.io/control-plane-
     sleep 3
     #kubectl describe node cp | grep Taint | grep /master &&
