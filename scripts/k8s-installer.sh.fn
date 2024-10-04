@@ -1,5 +1,7 @@
 #!/bin/bash
 
+KUBEADM_INIT_OP="kubeadm.init.op"
+
 PROMPTS=${PROMPTS:=1}
 ALL_PROMPTS=${ALL_PROMPTS:=1}
 ABS_NO_PROMPTS=0
@@ -869,10 +871,16 @@ KUBEADM_INIT() {
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster"
         echo "Note: --pod-network-cidr: specifies the subnet which will be used for Pod IP addresses"
         echo "Note: --apiserver-cert-extra-sans: will allow secured access via the specified address (useful for tunneled access)"
-        RUN sudo "kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1 |& tee kubeadm.init.op"
+
+        CMD="sudo kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --pod-network-cidr=$POD_CIDR --apiserver-cert-extra-sans 127.0.0.1"
+        echo "# -- $CMD " > $KUBEADM_INIT_OP
+        RUN $CMD  |& tee -a $KUBEADM_INIT_OP
     else
         STEP_HEADER "KUBEADM_INIT:"  "Initialize the cluster using $KUBEADM_CONFIG"
-        RUN "sudo kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --config $KUBEADM_CONFIG |& tee kubeadm.init.op"
+
+        CMD="sudo kubeadm init $SOCKET $CP_ENDPOINT --upload-certs $LB_ARGS --config $KUBEADM_CONFIG"
+        echo "# -- $CMD " > $KUBEADM_INIT_OP
+        RUN $CMD  |& tee -a $KUBEADM_INIT_OP
     fi
 
     [ ! -f /etc/kubernetes/admin.conf ] &&
