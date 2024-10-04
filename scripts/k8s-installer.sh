@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+echo "==== $0 $* ========================================"
 
 # Examples usage:
 #
@@ -37,7 +39,7 @@ set -T
 #CRIO_VERSION=1.27
 #K8S_VERSION=1.30.3-1.1
 #CRIO_VERSION=1.30
-K8S_VERSION=1.31.0-1.1
+K8S_VERSION=1.31.1-1.1
 CRIO_VERSION=1.31
 K8S_RELEASE=$( echo $K8S_VERSION | sed -e 's/\.[0-9]*-[0-9][0-9]$//' -e 's/\.[0-9]*-[0-9]\.[0-9]$//' )
 echo "K8S_VERSION=$K8S_VERSION     K8S_RELEASE=${K8S_RELEASE}"
@@ -733,6 +735,8 @@ EOF
 done
 
 ## -- Main: ----------------------------------------------------------
+
+echo "==== [MAIN] HOST=$HOST CP_INIT=$CP_INIT NODE_ROLE=$NODE_ROLE ========================================"
 
 case $NODE_ROLE in
     control)
