@@ -15,6 +15,8 @@ cd       $TMP_DIR/
 
 which jq || sudo apt-get install -y jq
 
+## -- Func: ------------------------------------------------------------------------------
+
 die() { echo "$0: die - $*" >&2; exit 1; }
 
 DESTROY() {
@@ -36,11 +38,13 @@ GET_CONTEXT_INFO() {
 
 CREATE_KUBECONFIG() {
     USER_NAME=$1; shift
+    GROUP=$1;     shift
 
     openssl genrsa -out ${USER_NAME}.key 2048 || die "Failed genrsa"
 
     #openssl req -new -key ${USER_NAME}.key -out ${USER_NAME}.csr -subj "/CN=${USER_NAME}/O=system:masters" || die "Failed req -new -key"
-    openssl req -new -key ${USER_NAME}.key -out ${USER_NAME}.csr -subj "/CN=${USER_NAME}/O=usergroup" || die "Failed req -new -key"
+    #openssl req -new -key ${USER_NAME}.key -out ${USER_NAME}.csr -subj "/CN=${USER_NAME}/O=usergroup" || die "Failed req -new -key"
+    openssl req -new -key ${USER_NAME}.key -out ${USER_NAME}.csr -subj "/CN=${USER_NAME}/O=${GROUP}" || die "Failed req -new -key"
     #openssl req -new -key ${USER_NAME}.key -out ${USER_NAME}.csr || die "Failed req -new -key"
 
     cat ${USER_NAME}.csr | base64 -w0
@@ -118,15 +122,22 @@ EOF
     ls -al $OP_FILE
 }
 
-NEW_USER=$1
+## -- Args: ------------------------------------------------------------------------------
+
+GROUP=""
 OP_FILE=""
-[ ! -z "$2"     ] && OP_FILE=$2
+NEW_USER=$1; shift
+
+[ "$1" = "-g" ] && { shift; GROUP=$1; shift; }
+[ ! -z "$1"     ] && OP_FILE=$1
 [ -z "$OP_FILE" ] && OP_FILE=~/.kube/config.${NEW_USER}
+
+## -- Main: ------------------------------------------------------------------------------
 
 DESTROY $NEW_USER
 
 GET_CONTEXT_INFO
 [ -z "$CLUSTER_ADDR" ] && die "Failed to set CLUSTER_ADDR"
 
-CREATE_KUBECONFIG $NEW_USER
+CREATE_KUBECONFIG $NEW_USER $GROUP
 
