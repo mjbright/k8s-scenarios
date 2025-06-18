@@ -4,9 +4,12 @@
 # - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 
 
-export RELEASE=1.31.1
+#export RELEASE=1.31.1
+export RELEASE=1.32.1
 MINOR_RELEASE=${RELEASE%.*}
-KUBE_PKG_V="${RELEASE}-1.1"
+SUFFIX=1.1
+KUBE_PKG_V="${RELEASE}-$SUFFIX"
+##SUFFIX=00
 
 HOSTNAME=$(hostname)
 
@@ -28,6 +31,8 @@ PV() {
         cat
         return
     }
+
+    INSTALL_PV
     pv -qL $PV_RATE
     #[ $PV_PROMPT -eq 0 ] && return
     #read _DUMMY
@@ -59,6 +64,7 @@ READ_OPTIONS() {
         [ "${DUMMY}" = "q" ] && exit 0
         [ "${DUMMY}" = "Q" ] && exit 0
 
+        [ "${DUMMY}" = "np" ] && { PROMPTS=0; return 0; }
         [ "${DUMMY}" = "s" ] && return 1
         [ "${DUMMY}" = "S" ] && return 1
 
@@ -229,7 +235,7 @@ CLEANUP_LOCAL() {
         [ -d /var/lib/etcd   ] && RUN sudo rm -rf /var/lib/etcd
 
         RUN sudo apt-mark unhold kubelet kubeadm kubectl
-        RUN sudo apt-get remove -y kubelet=$KUBE_PKG_V kubeadm=$KUBE_PKG_V kubectl=$KUBE_PKG_V
+        RUN sudo apt-get remove -y kubelet=$KUBE_PKG_V kubeadm=$KUBE_PKG_V kubectl=$KUBE_PKG_V  kubernetes-cni
     }
 
     KUBE_PIDS=$( ps aux | grep kube | grep -v grep | grep -v kubeadm_install | awk '{ print $2; }' )
@@ -313,13 +319,17 @@ INSTALL_KUBE() {
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v${MINOR_RELEASE}/deb/Release.key |
         sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
-    CPRESS yellow "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${MINOR_RELEASE}/deb/ / | sudo tee /etc/apt/sources.list.d/kubernetes.list"
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${MINOR_RELEASE}/deb/ /" |
-        sudo tee /etc/apt/sources.list.d/kubernetes.list
-
+    UPDATE_KUBERNETES_LIST
     RUN sudo apt-get update
     RUN sudo apt-get install -y kubelet=$KUBE_PKG_V kubeadm=$KUBE_PKG_V kubectl=$KUBE_PKG_V
     RUN sudo apt-mark hold kubelet kubeadm kubectl
+}
+
+UPDATE_KUBERNETES_LIST() {
+    CPRESS yellow "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${MINOR_RELEASE}/deb/ / | sudo tee /etc/apt/sources.list.d/kubernetes.list"
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${MINOR_RELEASE}/deb/ /" |
+        sudo tee /etc/apt/sources.list.d/kubernetes.list
+    RUN sudo apt-get update
 }
 
 CONFIG_KUBE() {
@@ -398,23 +408,67 @@ CLEANUP_REMOTE_WORKER() {
     ssh worker "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -np -rm"
 }
 
-INSTALL_WORKER() {
-    scp $0 worker:/tmp/
+RECREATE_JOIN_CMDS() {
+    JOIN_WORKER="sudo "$( sudo kubeadm token create --print-join-command )
+
+    #CP_CERTS=$( sudo kubeadm init phase upload-certs --upload-certs |& grep -v upload-certs )
+    CP_CERTS=$( sudo kubeadm init phase upload-certs --upload-certs |& tail -1 )
+
+    #echo "CP_CERTS='$CP_CERTS'"
+
+    JOIN_CP="$JOIN_WORKER --control-plane --certificate-key $CP_CERTS"
+    echo -e "JOIN_WORKER=\n\t$JOIN_WORKER"
+    echo -e "JOIN_CP=\n\t$JOIN_CP"
+
+    echo $JOIN_WORKER > /tmp/join_worker.sh
+    echo $JOIN_CP     > /tmp/join_cp.sh
+}
+
+INSTALL_CPn() {
+    scp $0 cp2:/tmp/
+    scp $0 cp3:/tmp/
+
+    ssh cp2 "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -np -A"
+    JOIN_CPn cp2
+
+    ssh cp3 "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -np -A"
+    JOIN_CPn cp3
+}
+
+JOIN_CPn() {
+    CPn=$1; shift
+
+    scp /tmp/join_cp.sh $CPn:/tmp/
 
     echo
-    grep -m1 -A3 "kubeadm join" ~/kubeadm-init.op > /tmp/join_cp.sh
-    grep -A1 "kubeadm join" ~/kubeadm-init.op | tail -2 > /tmp/join_worker.sh
+    echo "About to join $CPn to this node"
+    #read -p "About to join $CPn to this node"
+    ssh $CPn "set -x; chmod +x /tmp/join_cp.sh; sudo bash -x /tmp/join_cp.sh"
+}
 
+JOIN_WORKER() {
     scp /tmp/join_worker.sh worker:/tmp/
-    # ssh worker "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -x -np -A"
-    ssh worker "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -np -A"
-
     echo
     read -p "About to join worker to this node"
     ssh worker "set -x; chmod +x /tmp/join_worker.sh; sudo bash -x /tmp/join_worker.sh"
 
     echo
     RUN kubectl get no -w
+}
+
+INSTALL_WORKER() {
+    scp $0 worker:/tmp/
+
+    [ ! -f /tmp/join_cp.sh ] && {
+        echo
+        grep -m1 -A3 "kubeadm join" ~/kubeadm-init.op > /tmp/join_cp.sh
+        grep -A1 "kubeadm join" ~/kubeadm-init.op | tail -2 > /tmp/join_worker.sh
+    }
+
+    # ssh worker "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -x -np -A"
+    ssh worker "set -x; chmod +x /tmp/kubeadm_install.sh; ls -al /tmp/kubeadm_install.sh; /tmp/kubeadm_install.sh -np -A"
+
+    JOIN_WORKER
 }
 
 INSTALL() {
@@ -441,6 +495,53 @@ INSTALL() {
 
 
     # node-role.kubernetes.io/control-plane:NoSchedule
+}
+
+UPGRADE_NODE() {
+    NODE_NAME="$1"; shift;
+
+    SSH=""
+    case $NODE_NAME in
+        cp) ;;
+         *) SSH="ssh -t $NODE_NAME"
+    esac
+
+    PRESS "About to upgrade Node '$NODE_NAME' to release '$RELEASE'"
+
+    UPDATE_KUBERNETES_LIST
+    RUN $SSH sudo apt update
+    RUN $SSH sudo apt-cache madison kubeadm
+    RUN $SSH sudo apt-mark unhold kubeadm
+    RUN $SSH sudo apt-get install -y kubeadm=${RELEASE}-$SUFFIX
+    RUN $SSH sudo apt-mark hold kubeadm
+    RUN $SSH sudo kubeadm version
+    RUN kubectl drain $NODE_NAME --ignore-daemonsets
+    RUN $SSH sudo kubeadm upgrade plan
+    RUN $SSH kubeadm config images pull
+
+    [   -z "$SSH" ] && RUN $SSH sudo kubeadm upgrade apply v${RELEASE}
+    [ ! -z "$SSH" ] && RUN $SSH sudo kubeadm upgrade node
+
+    RUN kubectl get node
+    RUN $SSH sudo apt-mark unhold kubelet kubectl
+    RUN $SSH sudo apt-get install -y kubelet=${RELEASE}-$SUFFIX kubectl=${RELEASE}-$SUFFIX
+    RUN $SSH sudo apt-mark hold kubelet kubectl
+    RUN $SSH sudo systemctl daemon-reload
+    RUN $SSH sudo systemctl restart kubelet
+    RUN kubectl get node
+    RUN kubectl uncordon $NODE_NAME
+    RUN kubectl get node
+}
+
+UPGRADE_ALL() {
+    NODES=$*;
+
+    [ -z "$NODES" ] && NODES=$( kubectl get no -o jsonpath='{ .items[*].metadata.name }' )
+
+    for NODE in $NODES; do
+        [ "$NODE" = "wo" ] && NODE="worker"
+        UPGRADE_NODE $NODE
+    done
 }
 
 DEPLOY_WEB() {
@@ -474,11 +575,16 @@ DEPLOY_WEB() {
     done
 }
 
+INSTALL_PV() {
+    dpkg -l | grep -q "^ii .*pv" || {
+        RUN sudo apt-get install -y pv
+        dpkg -l | grep "^ii .*pv" || die "Failed to install pv"
+    }
+}
+
 ## -- Args: ------------------------------------------------------------------------------
 
-dpkg -l | grep -q "^ii .*pv" ||
-    RUN sudo apt-get install -y pv
-
+INSTALL_PV
 SET_COLOURS
 
 [ -z "$1" ] && set -- -A
@@ -528,11 +634,35 @@ while [ ! -z "$1" ]; do
               exit $?
               ;;
 
+        -upgrade|-update) shift
+              UPGRADE_ALL $*
+              set -- DUMMY
+              exit
+              ;;
+
+        -k6|-cp2|-cp3|-cp23)
+              INSTALL_CPn
+              exit $?
+              ;;
+
+        -join) JOIN_WORKER
+              JOIN_CPn
+              exit $?
+              ;;
+
+        -tokens) # recreate join commands
+              RECREATE_JOIN_CMDS
+              exit $?
+              ;;
+      
         -ta*) RUN kubectl taint node --all node-role.kubernetes.io/control-plane-
               exit $?
               ;;
 
-        -rel) export RELEASE=$1;;
+        -rel) export RELEASE=$1
+              export MINOR_RELEASE=${RELEASE%.*}
+              export KUBE_PKG_V="${RELEASE}-$SUFFIX"
+              ;;
 
          #-rm) CLEANUP_LOCAL; CLEANUP_REMOTE_WORKER; exit $?;;
          -rm) CLEANUP_LOCAL; exit $?;;
